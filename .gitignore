@@ -1,0 +1,9 @@
+node_modules/
+.auth/
+env/.env.*
+!env/.env.example
+playwright-report/
+test-results/
+env/accounts.json
+screenshots/
+.uploads/
