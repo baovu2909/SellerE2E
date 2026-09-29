@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Tự động hoá trình duyệt (Playwright) cho AMF Seller — môi trường dev / test",
   "scripts": {
-    "panel": "node --watch-path=panel/server.js panel/server.js",
+    "panel": "node --watch-path=panel/server.js --watch-path=panel/lib --watch-path=panel/explain-error.js panel/server.js",
     "test:dev": "cross-env ENV=dev playwright test",
     "test:test": "cross-env ENV=test playwright test",
     "test:dev:headed": "cross-env ENV=dev playwright test --headed",

@@ -1,0 +1,15 @@
+<div class="card">
+  <h2><i data-lucide="shield-check"></i> Kiểm tra trang Phân quyền</h2>
+  <p>Mở trang <b>Quản Lý Phân Quyền</b>, từng vai trò: so chấm có quyền / không quyền với <b>permission-matrix</b>, thử <b>bộ lọc</b> và <b>Mở tất cả / Đóng tất cả</b>. Chỉ xem — <b>không sửa quyền</b>.</p>
+  <div class="form-note"><i data-lucide="info"></i><span>Ô để trống → dùng giá trị mặc định</span></div>
+
+  <div class="form-section extra">
+    <div class="section-title"><i data-lucide="search"></i> Bộ lọc</div>
+    <div class="row">
+      <label class="field">Từ khoá tìm quyền <input id="perm-search" type="text" maxlength="100" placeholder="VD: khuyến mãi" autocomplete="off" /></label>
+    </div>
+  </div>
+
+  <p class="hint">Lệch matrix hiện ✘ kèm vai trò + dòng + chiều lệch. Dòng trên trang chưa có trong matrix hiện ⚠. Bảng nối trang ↔ matrix: <code>tests/roles/permission-page.ts</code>.</p>
+  <button data-run="permissions"><i data-lucide="play"></i> Chạy kiểm tra phân quyền</button>
+</div>

@@ -1,0 +1,67 @@
+<div class="card">
+  <h2><i data-lucide="package-plus"></i> Thêm → Xem → Sửa sản phẩm</h2>
+  <p>Chạy lần lượt: thêm sản phẩm, xem lại, sửa, thử <b>các bộ lọc</b>, <b>các nút</b>, <b>phân trang</b> và <b>nhập sản phẩm</b>.</p>
+  <div class="form-note"><i data-lucide="info"></i><span>Ô để trống → dùng giá trị mặc định</span></div>
+
+  <div class="form-section create">
+    <div class="section-title"><i data-lucide="circle-plus"></i> Tạo mới</div>
+    <div class="row">
+      <label class="field">Tên sản phẩm <input id="p-name" type="text" maxlength="100" placeholder="VD: Sản phẩm test" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Mã EAN-13 <input id="p-code" type="text" inputmode="numeric" maxlength="13" placeholder="Hệ thống tự cấp" autocomplete="off" /></label>
+      <label class="field">Mã SKU <input id="p-sku" type="text" maxlength="50" placeholder="Không nhập" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Danh mục cấp 3 <input id="p-category" type="text" maxlength="100" placeholder="Danh mục đầu tiên" autocomplete="off" /></label>
+      <div class="field">Loại sản phẩm
+        <ui-dropdown id="p-type" value="hang-hoa">
+          <option value="hang-hoa">Hàng hoá</option>
+          <option value="dich-vu">Dịch vụ</option>
+        </ui-dropdown>
+      </div>
+    </div>
+    <div class="row">
+      <label class="field">Mô tả ngắn <input id="p-short" type="text" maxlength="255" placeholder="VD: Mô tả ngắn sản phẩm test" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field cost-only">Giá vốn (VNĐ) <input id="p-cost" type="text" inputmode="numeric" placeholder="VD: 100000" autocomplete="off" /></label>
+      <label class="field">Giá bán (VNĐ) <input id="p-price" type="text" inputmode="numeric" placeholder="VD: 150000" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Đơn vị tính <input id="p-unit" type="text" maxlength="50" placeholder="VD: Cái" autocomplete="off" /></label>
+    </div>
+    <div class="field store-field">Tồn kho theo cửa hàng
+      <div id="p-stores" class="store-rows"></div>
+      <button type="button" class="secondary add-store" id="p-add-store"><i data-lucide="plus"></i> Thêm cửa hàng</button>
+    </div>
+    <p class="hint">Không thêm = cửa hàng mặc định, không nhập tồn. Có số lượng thì tự bật "Phụ Thuộc Tồn Kho".</p>
+    <div class="field" style="margin-bottom: 10px">Ảnh sản phẩm (tối đa 10)
+      <ui-file-picker id="p-images" multiple max="10" accept="image/*" placeholder="Chọn ảnh"></ui-file-picker>
+    </div>
+  </div>
+
+  <div class="form-section edit">
+    <div class="section-title"><i data-lucide="pencil"></i> Khi sửa <span class="sub">— sửa sản phẩm vừa tạo</span></div>
+    <div class="row">
+      <label class="field">Tên mới <input id="p-edit-name" type="text" maxlength="100" placeholder="Tên cũ + (sửa)" autocomplete="off" /></label>
+      <label class="field">Giá bán mới <input id="p-edit-price" type="text" inputmode="numeric" placeholder="Giá cũ + 10000" autocomplete="off" /></label>
+    </div>
+  </div>
+
+  <div class="form-section extra">
+    <div class="section-title"><i data-lucide="file-spreadsheet"></i> Nhập từ Excel</div>
+    <div class="field" style="margin-bottom: 10px">
+      <ui-file-picker id="p-import" accept=".xlsx,.xls,.csv" placeholder="Chọn file Excel"></ui-file-picker>
+    </div>
+    <p class="hint">Không chọn file → chỉ kiểm tra tải file mẫu và nút "Nhập dữ liệu" bị khoá khi chưa có file.</p>
+  </div>
+
+  <button data-run="product"><i data-lucide="play"></i> Chạy test sản phẩm</button>
+</div>
+
+<div class="card">
+  <h2><i data-lucide="file-spreadsheet"></i> Chỉ nhập sản phẩm từ Excel</h2>
+  <p>Chỉ chạy bước <b>Nhập sản phẩm</b> với file Excel đã chọn ở thẻ trên (tải file mẫu → chọn file → Nhập dữ liệu → kiểm tra tổng sản phẩm tăng hoặc lỗi hệ thống báo).</p>
+  <button data-run="product-import"><i data-lucide="upload"></i> Chạy nhập sản phẩm</button>
+</div>

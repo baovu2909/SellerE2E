@@ -1,5 +1,6 @@
 import { BrowserContext, Page, test as base } from '@playwright/test';
 import { autoDismissSecurityPopup } from '../pages/common';
+import { watchApiErrors } from './api-errors';
 
 /**
  * `test` dùng CHUNG 1 cửa sổ trình duyệt cho mọi test trong cùng worker
@@ -30,8 +31,11 @@ export const test = base.extend<{}, { shared: { context: BrowserContext; page: P
     { scope: 'worker' },
   ],
 
-  page: async ({ shared }, use) => {
+  // mỗi test: ghi lại response lỗi của API (xem tests/api-errors.ts)
+  page: async ({ shared }, use, testInfo) => {
+    const stop = watchApiErrors(shared.page, testInfo);
     await use(shared.page);
+    await stop();
   },
 });
 

@@ -31,7 +31,17 @@ const IN = {
   isService: env('PRODUCT_TYPE') === 'dich-vu',
   cost: Number(env('PRODUCT_COST', '100000')),
   price: Number(env('PRODUCT_PRICE', '150000')),
-  stock: env('PRODUCT_STOCK'),
+  // Tồn kho theo cửa hàng: [{ name, qty }] (PRODUCT_STORES, JSON). Trống → giữ cửa hàng mặc định, không nhập tồn.
+  stores: ((): { name: string; qty: number | null }[] => {
+    try {
+      const list = JSON.parse(env('PRODUCT_STORES', '[]'));
+      if (Array.isArray(list) && list.length) return list;
+    } catch {
+      throw new Error('PRODUCT_STORES không đúng dạng JSON [{ "name": "...", "qty": 10 }]');
+    }
+    // cách cũ: PRODUCT_STOCK = số lượng cho cửa hàng mặc định
+    return env('PRODUCT_STOCK') ? [{ name: '', qty: Number(env('PRODUCT_STOCK')) }] : [];
+  })(),
   images: env('PRODUCT_IMAGES').split('|').map((s) => s.trim()).filter(Boolean),
   importFile: env('PRODUCT_IMPORT_FILE'),
 };
@@ -43,6 +53,9 @@ const EDIT = {
 const PAGE_SIZE = 20;
 
 const norm = (s: string) => (s ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** khớp đúng cả chữ (bỏ khoảng trắng 2 đầu) */
+const exactRe = (s: string, flags = 'i') => new RegExp(`^\\s*${escapeRe(s)}\\s*$`, flags);
 const money = (v: number) => `${Math.round(v).toLocaleString('vi-VN')}đ`;
 const digits = (s: string | null) => Number((s ?? '').replace(/[^\d]/g, '') || NaN);
 
@@ -103,7 +116,7 @@ async function pickCategory(page: Page, lv3: string) {
   await tree.locator('button').first().click();
   await tree.getByPlaceholder('Tìm kiếm danh mục...').fill(lv3);
   await page.waitForTimeout(500);
-  const item = tree.locator('li li li span, li li li div').filter({ hasText: new RegExp(`^\\s*${lv3.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i') }).first();
+  const item = tree.locator('li li li span, li li li div').filter({ hasText: exactRe(lv3) }).first();
   await item.click({ timeout: 10_000 });
   await page.waitForTimeout(300);
 }
@@ -123,6 +136,58 @@ async function resolveCategory(page: Page): Promise<{ lv1: string; lv2: string; 
   return found;
 }
 
+// ---------- cửa hàng / tồn kho ----------
+
+const storeBox = (page: Page) => page.locator('app-product-store-selector');
+
+/** Các dòng "Cửa Hàng Đã Chọn": tên + số lượng */
+async function storeRows(page: Page): Promise<{ name: string; qty: string }[]> {
+  const names = await storeBox(page).locator('[formcontrolname="storeName"] input').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  const qtys = await storeBox(page).locator('[formcontrolname="quantity"] input').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+  return names.map((name, i) => ({ name: name.trim(), qty: qtys[i] ?? '' }));
+}
+
+/**
+ * Chọn đúng các cửa hàng đã nhập (bỏ chọn cửa hàng khác, kể cả cửa hàng mặc định) rồi nhập số lượng.
+ * Số lượng chỉ sửa được khi bật "Phụ Thuộc Tồn Kho" → có số lượng thì tự bật.
+ */
+async function fillStores(page: Page) {
+  const named = IN.stores.filter((s) => s.name);
+  if (named.length) {
+    const box = storeBox(page);
+    await box.locator('[role=button]').first().click();
+    const items = box.locator('ul li').filter({ has: page.locator('input[type=checkbox]') });
+    const want = new Set(named.map((s) => norm(s.name)));
+    const all: string[] = [];
+    for (let i = 0; i < (await items.count()); i++) {
+      const li = items.nth(i);
+      const label = ((await li.locator('span').last().textContent()) ?? '').trim();
+      all.push(label);
+      const checked = await li.locator('input[type=checkbox]').isChecked();
+      if (checked !== want.has(norm(label))) await li.click();
+    }
+    const missing = named.filter((s) => !all.some((a) => norm(a) === norm(s.name)));
+    if (missing.length) {
+      await box.getByRole('button', { name: 'Hủy' }).click();
+      throw new Error(`Không có cửa hàng: ${missing.map((s) => `"${s.name}"`).join(', ')}. Có: ${all.join(', ')}`);
+    }
+    await box.getByRole('button', { name: 'Chọn' }).click();
+    await page.waitForTimeout(300);
+  }
+  if (IN.isService || !IN.stores.some((s) => s.qty !== null)) return;
+
+  const inputs = storeBox(page).locator('[formcontrolname="quantity"] input');
+  if (!(await inputs.first().isEditable())) await page.locator('amf-switch[label="Phụ Thuộc Tồn Kho"]').click();
+  await expect(inputs.first(), 'Bật "Phụ Thuộc Tồn Kho" nhưng ô số lượng vẫn bị khoá').toBeEditable();
+  const rows = await storeRows(page);
+  for (const s of IN.stores) {
+    if (s.qty === null) continue;
+    const i = s.name ? rows.findIndex((r) => norm(r.name) === norm(s.name)) : 0;
+    if (i < 0) throw new Error(`Đã chọn nhưng không thấy dòng cửa hàng "${s.name}"`);
+    await inputs.nth(i).fill(String(s.qty));
+  }
+}
+
 async function submitProduct(page: Page, steps: Steps, buttonText: string, label: string) {
   const saved = page.waitForResponse((r) => /\/products?\b/.test(new URL(r.url()).pathname) && ['POST', 'PUT'].includes(r.request().method()) && !r.url().includes('/search'), { timeout: 30_000 });
   await page.locator('app-product-bar').getByRole('button', { name: buttonText }).click();
@@ -134,7 +199,14 @@ async function submitProduct(page: Page, steps: Steps, buttonText: string, label
     throw new Error(`Bấm "${buttonText}" nhưng form không gửi đi. Lỗi trên form: ${errs.map((t) => t.trim()).filter(Boolean).join(' | ') || '(không thấy)'}`);
   }
   const body = await res.json().catch(() => ({}));
-  steps.check(res.ok() && body?.type !== 'error' && !/lỗi|thất bại|tồn tại/i.test(body?.message ?? ''), `${label} thành công`, `API trả ${res.status()}${body?.message ? `: ${body.message}` : ''}`);
+  const msg = String(body?.message ?? '').trim();
+  // Tách câu: "Thêm sản phẩm thành công. Đồng bộ hệ thống thuế thất bại." → phần thành công ✔, việc phụ thất bại ⚠
+  const sentences = msg.split(/(?<=[.!])\s+/).map((s) => s.trim()).filter(Boolean);
+  const isBad = (s: string) => /thất bại|lỗi|không thành công|tồn tại/i.test(s);
+  const failed = !res.ok() || body?.type === 'error' || (!/thành công/i.test(msg) && isBad(msg));
+  const main = sentences.filter((s) => !isBad(s)).join(' ') || msg;
+  steps.check(!failed, `${label} thành công`, `API trả ${res.status()}${(failed ? msg : main) ? `: ${failed ? msg : main}` : ''}`);
+  if (!failed) for (const s of sentences.filter(isBad)) steps.warn(s.replace(/[.!]$/, ''), `${label.toLowerCase()} vẫn thành công, việc phụ này chưa được`);
   return body;
 }
 
@@ -149,9 +221,14 @@ async function checkForm(page: Page, steps: Steps, exp: { name: string; shortDes
   steps.check(norm(await val('unitName')) === norm(IN.unit), `${where}: Đơn vị tính`, `"${await val('unitName')}"`);
   steps.check(digits(await val('price')) === exp.price, `${where}: Giá bán = ${money(exp.price)}`, `"${await val('price')}"`);
   if (!IN.isService) steps.check(digits(await val('costPrice')) === IN.cost, `${where}: Giá vốn = ${money(IN.cost)}`, `"${await val('costPrice')}"`);
-  if (IN.stock && !IN.isService) {
-    const qty = await page.locator('app-product-store-selector [formcontrolname="quantity"] input').first().inputValue().catch(() => '');
-    steps.check(digits(qty) === Number(IN.stock), `${where}: Số lượng tồn = ${IN.stock}`, `"${qty}"`);
+  if (IN.stores.length) {
+    const rows = await storeRows(page);
+    for (const s of IN.stores) {
+      const row = s.name ? rows.find((r) => norm(r.name) === norm(s.name)) : rows[0];
+      const label = s.name || 'cửa hàng mặc định';
+      steps.check(Boolean(row), `${where}: Có cửa hàng "${label}"`, `đang có: ${rows.map((r) => r.name).join(', ') || '(không có)'}`);
+      if (row && s.qty !== null && !IN.isService) steps.check(digits(row.qty) === s.qty, `${where}: Tồn "${label}" = ${s.qty}`, `"${row.qty}"`);
+    }
   }
   const imgTitle = (await page.getByText(/Ảnh sản phẩm \(\d+\/10\)/).textContent().catch(() => '')) ?? '';
   const imgCount = Number(imgTitle.match(/\((\d+)\//)?.[1] ?? NaN);
@@ -211,13 +288,7 @@ test.describe('Sản phẩm', () => {
       await page.locator('amf-radio-group').getByText(IN.isService ? 'Dịch Vụ' : 'Hàng Hoá', { exact: true }).click();
       if (!IN.isService) await fillField(page, 'costPrice', IN.cost);
       await fillField(page, 'price', IN.price);
-      if (IN.stock && !IN.isService) {
-        // Số lượng tồn chỉ sửa được khi bật "Phụ Thuộc Tồn Kho"
-        const qty = page.locator('app-product-store-selector [formcontrolname="quantity"] input').first();
-        if (!(await qty.isEditable())) await page.locator('amf-switch[label="Phụ Thuộc Tồn Kho"]').click();
-        await expect(qty, 'Bật "Phụ Thuộc Tồn Kho" nhưng ô số lượng vẫn bị khoá').toBeEditable();
-        await qty.fill(IN.stock);
-      }
+      if (IN.stores.length) await fillStores(page);
       await steps.shot('Form thêm sản phẩm');
 
       await submitProduct(page, steps, 'Thêm Sản Phẩm', 'Thêm sản phẩm');
@@ -309,14 +380,28 @@ test.describe('Sản phẩm', () => {
       const sample = all.items[0];
       expect(sample, 'Danh sách trống — không có dữ liệu để thử bộ lọc').toBeTruthy();
 
-      /** Áp 1 bộ lọc → mọi dòng trả về phải thoả `ok`; bảng hiện đúng số dòng; xong bấm "Đặt lại" */
-      const tryFilter = async (label: string, apply: () => Promise<void>, ok: (x: any) => boolean, match?: (params: any) => boolean) => {
+      /**
+       * Áp 1 bộ lọc → mọi dòng trả về phải thoả `ok`; bảng hiện đúng số dòng; xong bấm "Đặt lại".
+       * show(x) = giá trị thực tế của dòng (vd "trạng thái = Mới") để báo rõ dòng sai sai ở đâu.
+       */
+      const tryFilter = async (
+        label: string,
+        need: string,
+        apply: () => Promise<void>,
+        ok: (x: any) => boolean,
+        show: (x: any) => string,
+        match?: (params: any) => boolean,
+      ) => {
         const res = nextSearch(page, match);
         await apply();
         const r = await searchResult(res);
         await waitIdle(page);
         const bad = r.items.filter((x) => !ok(x));
-        steps.check(bad.length === 0, `Lọc ${label}: ${r.total} kết quả đều đúng điều kiện`, bad.length ? `${bad.length} dòng sai: ${bad.slice(0, 3).map((x) => x.productName).join(', ')}` : '');
+        steps.check(
+          bad.length === 0,
+          `Lọc ${label}: ${r.total} kết quả đều có ${need}`,
+          bad.length ? `${bad.length} dòng sai — ${bad.slice(0, 5).map((x) => `"${x.productName}": ${show(x)}`).join('; ')}${bad.length > 5 ? '…' : ''}` : '',
+        );
         const rows = await page.locator('tbody tr').filter({ has: page.locator('amf-checkbox') }).count();
         steps.check(rows === r.items.length, `Lọc ${label}: bảng hiện ${r.items.length} dòng`, `bảng có ${rows}`);
         await steps.shot(`Lọc ${label}`);
@@ -328,51 +413,54 @@ test.describe('Sản phẩm', () => {
       };
 
       // Mã sản phẩm
-      await tryFilter(`mã "${sample.productCode}"`, async () => {
+      await tryFilter(`mã "${sample.productCode}"`, `mã chứa "${sample.productCode}"`, async () => {
         const i = page.locator('amf-input[formcontrolname="productCode"] input');
         await i.fill(sample.productCode);
         await i.press('Enter');
-      }, (x) => norm(x.productCode).includes(norm(sample.productCode)));
+      }, (x) => norm(x.productCode).includes(norm(sample.productCode)), (x) => `mã = ${x.productCode}`);
 
       // Tên sản phẩm (một phần tên)
       const part = sample.productName.split(/\s+/)[0];
-      await tryFilter(`tên chứa "${part}"`, async () => {
+      await tryFilter(`tên chứa "${part}"`, `tên chứa "${part}"`, async () => {
         const i = page.locator('amf-input[formcontrolname="productName"] input');
         await i.fill(part);
         await i.press('Enter');
-      }, (x) => norm(x.productName).includes(norm(part)));
+      }, (x) => norm(x.productName).includes(norm(part)), (x) => `tên = ${x.productName}`);
 
       // Danh mục (cấp 2 của sản phẩm mẫu)
-      await tryFilter(`danh mục "${sample.categoryNameLevel2}"`, async () => {
+      await tryFilter(`danh mục "${sample.categoryNameLevel2}"`, `danh mục cấp 2 "${sample.categoryNameLevel2}"`, async () => {
         const tree = page.locator('app-category-tree').first();
         await tree.locator('button').first().click();
         await tree.getByPlaceholder('Tìm kiếm danh mục...').fill(sample.categoryNameLevel2);
         await page.waitForTimeout(400);
-        await tree.locator('li li span').filter({ hasText: new RegExp(`^\\s*${sample.categoryNameLevel2}\\s*$`, 'i') }).first().click();
-      }, (x) => x.categoryIdLevel2 === sample.categoryIdLevel2);
+        await tree.locator('li li span').filter({ hasText: exactRe(sample.categoryNameLevel2) }).first().click();
+      }, (x) => x.categoryIdLevel2 === sample.categoryIdLevel2, (x) => `danh mục = ${x.categoryNameLevel2} > ${x.categoryNameLevel3}`);
 
-      // Các ô chọn: Loại sản phẩm / Ẩn-Hiện tại quầy / Trạng thái phiếu
-      const selects: [string, string, string, (x: any, v: string) => boolean][] = [
-        ['Loại sản phẩm', 'Hàng Hoá', 'productType', (x) => String(x.productType) === '1'],
-        ['Loại sản phẩm', 'Dịch Vụ', 'productType', (x) => String(x.productType) === '2'],
-        ['Ẩn/Hiện tại quầy', 'Hiện', 'isActive', (x) => x.isActive === true],
-        ['Ẩn/Hiện tại quầy', 'Ẩn', 'isActive', (x) => x.isActive === false],
-        ['Trạng thái phiếu', 'Mới', 'status', (x) => Number(x.status) === 0],
-        ['Trạng thái phiếu', 'Đã duyệt', 'status', (x) => Number(x.status) === 1],
-        ['Trạng thái phiếu', 'Từ chối', 'status', (x) => Number(x.status) === 2],
+      // Các ô chọn — mỗi lựa chọn: [ô lọc, lựa chọn, tên cột trên bảng, cách đọc giá trị của dòng, giá trị cần]
+      // Cột "Trạng thái" trên bảng lấy từ processApro (0 Mới, 1 Đã duyệt, 2 Từ chối) — KHÔNG phải trường status
+      const TYPE: Record<string, string> = { '1': 'Hàng Hoá', '2': 'Dịch Vụ' };
+      const APPROVE: Record<string, string> = { '0': 'Mới', '1': 'Đã duyệt', '2': 'Từ chối' };
+      const selects: [string, string, string, (x: any) => string][] = [
+        ['Loại sản phẩm', 'Hàng Hoá', 'loại', (x) => TYPE[String(x.productType)] ?? `(${x.productType})`],
+        ['Loại sản phẩm', 'Dịch Vụ', 'loại', (x) => TYPE[String(x.productType)] ?? `(${x.productType})`],
+        ['Ẩn/Hiện tại quầy', 'Hiện', 'tại quầy', (x) => (x.isActive ? 'Hiện' : 'Ẩn')],
+        ['Ẩn/Hiện tại quầy', 'Ẩn', 'tại quầy', (x) => (x.isActive ? 'Hiện' : 'Ẩn')],
+        ['Trạng thái phiếu', 'Mới', 'trạng thái', (x) => APPROVE[String(x.processApro ?? 0)] ?? `(${x.processApro})`],
+        ['Trạng thái phiếu', 'Đã duyệt', 'trạng thái', (x) => APPROVE[String(x.processApro ?? 0)] ?? `(${x.processApro})`],
+        ['Trạng thái phiếu', 'Từ chối', 'trạng thái', (x) => APPROVE[String(x.processApro ?? 0)] ?? `(${x.processApro})`],
       ];
-      for (const [label, option, , ok] of selects) {
-        await tryFilter(`${label} = ${option}`, async () => {
+      for (const [label, option, col, value] of selects) {
+        await tryFilter(`${label} = ${option}`, `${col} "${option}"`, async () => {
           await page.locator(`amf-select[label="${label}"]`).locator('button').first().click();
-          await page.locator('button, li, [role=option]').filter({ hasText: new RegExp(`^\\s*${option}\\s*$`) }).filter({ visible: true }).last().click();
-        }, (x) => ok(x, option));
+          await page.locator('button, li, [role=option]').filter({ hasText: exactRe(option, '') }).filter({ visible: true }).last().click();
+        }, (x) => value(x) === option, (x) => `${col} = ${value(x)} (cần ${option})`);
       }
 
       // Khoảng ngày tạo: ngày tạo của sản phẩm mẫu
       const day = new Date(sample.createAt);
       const dd = `${String(day.getDate()).padStart(2, '0')}${String(day.getMonth() + 1).padStart(2, '0')}${day.getFullYear()}`;
       const iso = sample.createAt.slice(0, 10);
-      await tryFilter(`ngày tạo ${iso}`, async () => {
+      await tryFilter(`ngày tạo ${iso}`, `ngày tạo ${iso}`, async () => {
         // ô ngày tự xử lý từng phím (ngày → tháng → năm): vào ô, lùi về phần "ngày" rồi gõ 8 chữ số
         const inputs = page.locator('amf-daterange input');
         for (const i of [0, 1]) {
@@ -383,7 +471,7 @@ test.describe('Sản phẩm', () => {
           await input.pressSequentially(dd);
         }
         await page.keyboard.press('Escape');
-      }, (x) => String(x.createAt).slice(0, 10) === iso, (p) => Boolean(p.fromDate && p.toDate));
+      }, (x) => String(x.createAt).slice(0, 10) === iso, (x) => `ngày tạo = ${String(x.createAt).slice(0, 10)}`, (p) => Boolean(p.fromDate && p.toDate));
     } finally {
       await steps.flush();
     }
