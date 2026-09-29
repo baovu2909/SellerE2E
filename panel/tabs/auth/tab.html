@@ -1,0 +1,28 @@
+<div class="card">
+  <h2><i data-lucide="key-round"></i> Đăng nhập</h2>
+  <p>Bấm để chọn tài khoản dùng cho <b>mọi lệnh</b> (Chạy test, Doanh thu, Tạo cửa hàng…). Lưu riêng cho dev / test.</p>
+  <div class="acc-list" id="acc-list"></div>
+  <div class="row">
+    <label class="field">Tên đăng nhập <input id="acc-user" type="text" autocomplete="off" /></label>
+  </div>
+  <div class="row">
+    <label class="field">Mật khẩu <input id="acc-pass" type="password" autocomplete="new-password" /></label>
+  </div>
+  <div class="row actions">
+    <button class="secondary" id="acc-add" type="button"><i data-lucide="user-plus"></i> Lưu tài khoản</button>
+    <button data-run="login"><i data-lucide="log-in"></i> Đăng nhập</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2><i data-lucide="lock-keyhole"></i> Khoá tài khoản sau 5 lần sai</h2>
+  <p>Nhập sai mật khẩu 5 lần → phải thấy thông báo khoá. Không thấy thì báo lỗi.</p>
+  <div class="warn"><i data-lucide="triangle-alert"></i><span>Test sẽ <b>khoá thật</b> tài khoản này. Dùng tài khoản riêng để test, không dùng tài khoản chính.</span></div>
+  <div class="row">
+    <label class="field">Tài khoản test <input id="lock-user" type="text" placeholder="Trống = lấy trong env" autocomplete="off" /></label>
+  </div>
+  <div class="row">
+    <label class="field">Mật khẩu đúng (tuỳ chọn) <input id="lock-pass" type="password" placeholder="Để kiểm tra vẫn bị chặn" autocomplete="new-password" /></label>
+  </div>
+  <button data-run="lockout"><i data-lucide="shield-alert"></i> Chạy test khoá</button>
+</div>

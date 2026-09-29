@@ -1,0 +1,40 @@
+<div class="card">
+  <h2><i data-lucide="store"></i> Tạo → Xem → Sửa cửa hàng</h2>
+  <p>Chạy lần lượt: tạo cửa hàng, xem lại, sửa, thử <b>các bộ lọc</b>, <b>các nút</b> (Ngưng / Kích hoạt lại chỉ trên cửa hàng test) và <b>phân trang</b>.</p>
+  <div class="form-note"><i data-lucide="info"></i><span>Ô để trống → dùng giá trị mặc định</span></div>
+
+  <div class="form-section create">
+    <div class="section-title"><i data-lucide="circle-plus"></i> Tạo mới</div>
+    <div class="row">
+      <label class="field">Tên cửa hàng <input id="s-name" type="text" maxlength="100" placeholder="VD: Cửa hàng test" autocomplete="off" /></label>
+      <label class="field count-field">Số lượng tạo <input id="s-count" type="number" min="1" max="50" value="1" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Mã địa điểm KD <input id="s-code" type="text" inputmode="numeric" maxlength="20" placeholder="Số ngẫu nhiên" autocomplete="off" /></label>
+      <label class="field">Số hotline <input id="s-hotline" type="text" inputmode="tel" maxlength="15" placeholder="VD: 0901234567" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Email <input id="s-email" type="text" maxlength="100" placeholder="VD: cuahangtest@example.com" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Địa chỉ <input id="s-address" type="text" maxlength="255" placeholder="VD: 123 Đường Test" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Tỉnh / Thành phố <input id="s-province" type="text" maxlength="100" placeholder="VD: Thành phố Hà Nội" autocomplete="off" /></label>
+      <label class="field">Phường / Xã <input id="s-ward" type="text" maxlength="100" placeholder="Phường đầu tiên" autocomplete="off" /></label>
+    </div>
+  </div>
+
+  <div class="form-section edit">
+    <div class="section-title"><i data-lucide="pencil"></i>sửa thông tin <span class="sub"></span></div>
+    <div class="row">
+      <label class="field">Tên mới <input id="s-edit-name" type="text" maxlength="100" placeholder="Tên cũ + (sửa)" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Hotline mới <input id="s-edit-hotline" type="text" inputmode="tel" maxlength="15" placeholder="VD: 0909999999" autocomplete="off" /></label>
+      <label class="field">Email mới <input id="s-edit-email" type="text" maxlength="100" placeholder="VD: cuahangtest.sua@example.com" autocomplete="off" /></label>
+    </div>
+  </div>
+
+  <button data-run="store"><i data-lucide="play"></i> Chạy test cửa hàng</button>
+</div>

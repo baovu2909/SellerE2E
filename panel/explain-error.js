@@ -28,9 +28,11 @@ function describeScreen(snapshot = '') {
   if (/Nhập tài khoản của bạn|Đăng Nhập/i.test(snapshot) && /mật khẩu/i.test(snapshot) && !/navigation|app-navbar/i.test(snapshot))
     return 'Màn hình lúc lỗi là TRANG ĐĂNG NHẬP (chưa vào được hệ thống).';
   if (/Xuất hóa đơn điện tử để|dễ dàng cùng AMF Seller/i.test(snapshot)) return 'Màn hình lúc lỗi là TRANG GIỚI THIỆU AMF Seller (trang chủ công khai), chưa vào trong hệ thống.';
-  if (/403|không có quyền/i.test(snapshot)) return 'Màn hình lúc lỗi là trang KHÔNG CÓ QUYỀN (403).';
-  if (/404|không tìm thấy trang/i.test(snapshot)) return 'Màn hình lúc lỗi là trang KHÔNG TỒN TẠI (404).';
-  if (/500|lỗi hệ thống|đã xảy ra lỗi/i.test(snapshot)) return 'Màn hình lúc lỗi báo LỖI HỆ THỐNG.';
+  // đúng chữ của các trang lỗi trong FE (pages/error/page-403|404|500) — không bắt số 403/404/500 bất kỳ trên trang
+  if (/Truy cập bị từ chối/i.test(snapshot)) return 'Màn hình lúc lỗi là trang KHÔNG CÓ QUYỀN (403 — Truy cập bị từ chối).';
+  if (/Trang không tồn tại/i.test(snapshot)) return 'Màn hình lúc lỗi là trang KHÔNG TỒN TẠI (404).';
+  if (/Lỗi máy chủ/i.test(snapshot)) return 'Màn hình lúc lỗi là trang LỖI MÁY CHỦ (500).';
+  if (/Đang chờ phê duyệt/i.test(snapshot)) return 'Màn hình lúc lỗi là trang ĐANG CHỜ PHÊ DUYỆT hồ sơ.';
   return '';
 }
 

@@ -1,0 +1,15 @@
+<div class="card">
+  <h2><i data-lucide="user-cog"></i> Test theo vai trò</h2>
+  <p>Đăng nhập từng vai trò, kiểm tra menu, trang được xem / bị chặn, nút theo quyền, và danh sách + dropdown cửa hàng chỉ có cửa hàng được phân. Chỉ xem — <b>không tạo / sửa / xoá</b>.</p>
+  <div class="role-list" id="role-list">
+    <label class="check"><input type="checkbox" value="owner" checked /> Owner</label>
+    <label class="check"><input type="checkbox" value="storeManager" checked /> Quản lý cửa hàng</label>
+    <label class="check"><input type="checkbox" value="businessManager" checked /> Quản lý kinh doanh</label>
+    <label class="check"><input type="checkbox" value="hrManager" checked /> Quản lý nhân sự</label>
+    <label class="check"><input type="checkbox" value="warehouse" checked /> Thủ kho</label>
+    <label class="check"><input type="checkbox" value="cashier" checked /> Bán hàng</label>
+    <label class="check"><input type="checkbox" value="accountant" checked /> Kế toán</label>
+  </div>
+  <p class="hint">Tài khoản: điền <code>ROLE_…_USERNAME / _PASSWORD / _STORES</code> trong <code>env/.env.&lt;môi trường&gt;</code>. Vai trò chưa điền sẽ được bỏ qua. Quyền: sửa <code>tests/roles/permission-matrix.ts</code>.</p>
+  <button data-run="roles"><i data-lucide="play"></i> Chạy test vai trò</button>
+</div>

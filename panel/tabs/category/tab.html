@@ -1,0 +1,32 @@
+<div class="card">
+  <h2><i data-lucide="folder-plus"></i> Tạo → Xem → Sửa danh mục</h2>
+  <p>Tạo danh mục cấp 3 (VAT để mặc định), xem trong danh sách (kèm kiểm tra phân trang), rồi đổi tên thành "<i>tên</i> (sửa)".</p>
+  <div class="form-note"><i data-lucide="info"></i><span>Ô để trống → dùng giá trị mặc định</span></div>
+
+  <div class="form-section create">
+    <div class="section-title"><i data-lucide="circle-plus"></i> Tạo mới</div>
+    <div class="row">
+      <label class="field">Danh mục cấp 1 <input id="category-lv1" type="text" maxlength="100" placeholder="VD: Thiết bị điện tử" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Danh mục cấp 2 <input id="category-lv2" type="text" maxlength="100" placeholder="VD: Bộ phận máy tính" autocomplete="off" /></label>
+    </div>
+    <div class="row">
+      <label class="field">Danh mục cấp 3 <input id="category-name" type="text" maxlength="100" placeholder="VD: Danh mục test" autocomplete="off" /></label>
+    </div>
+    <p class="hint">Cấp 1, cấp 2 phải có sẵn. Cấp 3 nhập tay mà trùng → báo lỗi; để trống thì tự tránh trùng (Danh mục test 2, 3…).</p>
+  </div>
+
+  <div class="form-section edit">
+    <div class="section-title"><i data-lucide="pencil"></i> Khi sửa</div>
+    <p class="hint">Tự đổi tên cấp 3 thành "<i>tên</i> (sửa)", giữ nguyên VAT.</p>
+  </div>
+  <button data-run="category"><i data-lucide="play"></i> Chạy test danh mục</button>
+</div>
+
+<div class="card">
+  <h2><i data-lucide="percent"></i> Đổi thuế → VAT danh mục</h2>
+  <p>Đổi thuế suất mặc định trong <b>Thiết lập thuế</b> sang mức khác → kiểm tra %VAT của mọi danh mục có đổi theo không → trả thuế về như cũ.</p>
+  <div class="warn"><i data-lucide="triangle-alert"></i><span>Ảnh hưởng <b>toàn shop</b>: mỗi lần lưu thuế, VAT mọi danh mục bị ghi đè và <b>VAT riêng của từng sản phẩm bị xoá</b> (không khôi phục được).</span></div>
+  <button class="danger" data-run="category-tax"><i data-lucide="play"></i> Chạy test thuế</button>
+</div>
