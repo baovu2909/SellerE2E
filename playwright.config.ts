@@ -58,6 +58,8 @@ export default defineConfig({
   ],
   outputDir: `test-results/${ENV}`,
   use: {
+    // Dùng Google Chrome cài sẵn trên máy (không dùng Chromium tải kèm Playwright)
+    channel: 'chrome',
     baseURL,
     locale: 'vi-VN',
     timezoneId: 'Asia/Ho_Chi_Minh',
