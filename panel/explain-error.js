@@ -76,11 +76,14 @@ function explainError(message = '', snapshot = '') {
     todo = /intercepts pointer events/.test(msg)
       ? 'Có thứ khác (popup / khung che) đang che mất nó. Xem ảnh Màn hình cuối để biết popup nào.'
       : 'Xem ảnh Màn hình cuối: phần tử có hiện không, có bị che / bị khoá không.';
-  } else if (/toHaveURL/.test(msg)) {
+  } else if (/expect\(\w+\)\.(not\.)?toHaveURL/.test(msg)) {
+    // chỉ khi chính assertion lỗi là toHaveURL — msg còn chứa code frame, có thể nhắc toHaveURL ở dòng khác
     what = first && !/^expect\(/.test(first) ? first : 'Trang bị chuyển sang địa chỉ không mong muốn.';
     const url = msg.match(/Received string:\s*"([^"]+)"/);
     if (url) what += ` (đang ở: ${url[1].replace(/^https?:\/\/[^/]+/, '')})`;
-    todo = /errors\/403/.test(msg) ? 'Bị chặn quyền — kiểm tra quyền của vai trò trong permission-matrix.ts hoặc phân quyền trên hệ thống.' : /auth/.test(msg) ? 'Bị đá về trang đăng nhập — bấm Đăng nhập rồi chạy lại.' : 'So sánh với ảnh Màn hình cuối.';
+    // xét theo địa chỉ thực tế đang đứng, không theo chữ trong code frame
+    const at = url ? url[1] : '';
+    todo = /errors\/403/.test(at) ? 'Bị chặn quyền — kiểm tra quyền của vai trò trong permission-matrix.ts hoặc phân quyền trên hệ thống.' : /\/auth\//.test(at) ? 'Bị đá về trang đăng nhập — bấm Đăng nhập rồi chạy lại.' : 'So sánh với ảnh Màn hình cuối.';
   } else if (/toBeVisible|toHaveCount|toContainText|toHaveText|toBeDisabled|toBeEnabled|toBe\(|toEqual|toBeLessThanOrEqual|toBeNull|not\.toBeNull|toBeTruthy/.test(msg)) {
     // lỗi so sánh: dòng đầu thường là lời giải thích tiếng Việt viết sẵn trong test
     what = first && !/^expect\(/.test(first) ? first : `Kết quả trên màn hình không đúng như mong đợi${target ? ` (${target})` : ''}.`;

@@ -48,6 +48,8 @@ export default defineConfig({
   ],
   outputDir: `test-results/${ENV}`,
   use: {
+    // Dùng Google Chrome cài sẵn trên máy (không dùng Chromium tải kèm Playwright)
+    channel: 'chrome',
     baseURL,
     locale: 'vi-VN',
     timezoneId: 'Asia/Ho_Chi_Minh',
@@ -84,7 +86,15 @@ export default defineConfig({
     {
       // Test theo vai trò — mỗi vai trò tự đăng nhập bằng tài khoản riêng (ROLE_*_USERNAME trong env)
       name: 'roles',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 } },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1600, height: 900 },
+        // 7 vai trò chạy song song → xếp lệch cửa sổ theo worker để khi --headed không chồng khít lên nhau
+        launchOptions: {
+          slowMo: Number(process.env.SLOW_MO ?? 0),
+          args: [`--window-position=${Number(process.env.TEST_PARALLEL_INDEX ?? 0) * 60},${Number(process.env.TEST_PARALLEL_INDEX ?? 0) * 40}`],
+        },
+      },
       testMatch: /tests[\\/]roles[\\/].*\.spec\.ts/,
     },
     {
