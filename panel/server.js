@@ -335,7 +335,7 @@ fs.watch(__dirname, { recursive: true }, (_event, file) => {
   if (!file || file === 'server.js') return;
   clearTimeout(reloadTimer);
   reloadTimer = setTimeout(() => {
-    console.log(`↻ ${file} thay đổi → tải lại trang`);
+    console.log(`↻ ${file} thay đổi → Vui lòng tải lại trang`);
     for (const res of reloadClients) res.write('data: reload\n\n');
   }, 100);
 });

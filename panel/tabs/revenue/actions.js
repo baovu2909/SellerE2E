@@ -1,4 +1,3 @@
-/** Tab Doanh thu — lệnh chạy phía server */
 module.exports = {
   revenue: {
     args: () => ['test', '--project=reports', 'tests/reports/revenue-sync.spec.ts'],
@@ -11,7 +10,14 @@ module.exports = {
       };
       const from = date(p.revenueFrom, 'Từ ngày');
       const to = date(p.revenueTo, 'Đến ngày');
-      return { ...(from ? { REVENUE_FROM: from } : {}), ...(to ? { REVENUE_TO: to } : {}) };
+      const product = String(p.revenueOrderProduct || '').trim();
+      if (product.length > 200) throw new Error('Tên sản phẩm để tạo đơn quá dài');
+      return {
+        ...(from ? { REVENUE_FROM: from } : {}),
+        ...(to ? { REVENUE_TO: to } : {}),
+        REVENUE_CREATE_ORDER: p.revenueCreateOrder === false ? '0' : '1',
+        ...(product ? { REVENUE_ORDER_PRODUCT: product } : {}),
+      };
     },
   },
 };

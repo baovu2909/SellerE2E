@@ -1,9 +1,14 @@
 <div class="card">
   <h2><i data-lucide="circle-dollar-sign"></i> Kiểm tra doanh thu</h2>
-  <p>So <b>Tổng doanh thu</b> với tổng cộng dồn theo thời gian, phương thức thanh toán, cửa hàng, kênh bán, nhân viên — phải khớp nhau. Chỉ xem, <b>không tạo / sửa / xoá</b>.</p>
+  <p>So <b>Tổng doanh thu</b> với tổng cộng dồn theo thời gian, phương thức thanh toán, cửa hàng, sản phẩm, kênh bán, nhân viên — phải khớp nhau. Kiểm tra thêm <b>làm tròn số tiền rút gọn</b> (đ / k / tr / T), số cột tối đa của biểu đồ (Cửa hàng 15, Sản phẩm top 10) và <b>bộ lọc</b> ở từng tab.</p>
   <div class="row">
     <div class="field">Từ ngày – Đến ngày <ui-daterange id="revenue-range" placeholder="1 tháng gần nhất (mặc định)"></ui-daterange></div>
   </div>
   <p class="hint">Để trống = 1 tháng gần nhất (mặc định của trang Báo cáo doanh thu). Kết quả từng phần xem ở tab Log / Thành công / Lỗi.</p>
+  <label class="check"><input type="checkbox" id="revenue-create-order" checked /> Tạo 1 đơn bán tại quầy (tiền mặt) rồi kiểm tra số liệu tăng đúng</label>
+  <div class="row">
+    <label class="field">Sản phẩm để tạo đơn <input type="text" id="revenue-order-product" placeholder="Để trống = tự chọn sản phẩm rẻ nhất còn hàng" autocomplete="off" /></label>
+  </div>
+  <p class="hint">Đơn tạo thật ở cửa hàng mặc định của tài khoản (có thể tự xuất hoá đơn điện tử). Bỏ tick nếu chỉ muốn xem, không tạo dữ liệu.</p>
   <button data-run="revenue"><i data-lucide="play"></i> Chạy kiểm tra doanh thu</button>
 </div>
