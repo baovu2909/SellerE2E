@@ -7,6 +7,8 @@
   <title>Seller E2E Panel</title>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0/dist/umd/lucide.min.js"></script>
   <script type="module" src="/component/shared/dropdown.js"></script>
+  <script type="module" src="/component/shared/dropdown-tree.js"></script>
+  <script type="module" src="/component/shared/dropdown-categories.js"></script>
   <script type="module" src="/component/shared/daterange.js"></script>
   <script type="module" src="/component/shared/dialog.js"></script>
   <script type="module" src="/component/shared/filepicker.js"></script>
@@ -28,6 +30,8 @@
     </div>
     <span class="hdr-acc" id="hdr-acc" title="Tài khoản đang dùng — bấm để đổi"><i data-lucide="circle-user"></i>
       <span></span></span>
+    <button class="hdr-btn" id="seller-sync" title="Gọi lại các API bên Seller (danh mục…) để lấy dữ liệu mới nhất"><i data-lucide="refresh-cw"></i>
+      Đồng Bộ</button>
     <button class="hdr-btn" id="ui" title="Xem lại từng bước, có ảnh mỗi thao tác"><i data-lucide="monitor-play"></i>
       Playwright UI</button>
     <div class="env">
@@ -53,6 +57,7 @@
       <div class="group" data-group="permissions" data-label="Phân quyền" data-icon="shield-check"></div>
       <div class="group" data-group="category" data-label="Danh mục" data-icon="folder-tree"></div>
       <div class="group" data-group="product" data-label="Sản phẩm" data-icon="package"></div>
+      <div class="group" data-group="order" data-label="Đơn hàng" data-icon="receipt"></div>
       <div class="group" data-group="revenue" data-label="Doanh thu" data-icon="circle-dollar-sign"></div>
       <div class="group" data-group="general" data-label="Chung" data-icon="layout-grid"></div>
     </div>

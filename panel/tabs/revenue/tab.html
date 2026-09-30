@@ -7,7 +7,7 @@
   <p class="hint">Để trống = 1 tháng gần nhất (mặc định của trang Báo cáo doanh thu). Kết quả từng phần xem ở tab Log / Thành công / Lỗi.</p>
   <label class="check"><input type="checkbox" id="revenue-create-order" checked /> Tạo 1 đơn bán tại quầy (tiền mặt) rồi kiểm tra số liệu tăng đúng</label>
   <div class="row">
-    <label class="field">Sản phẩm để tạo đơn <input type="text" id="revenue-order-product" placeholder="Để trống = tự chọn sản phẩm rẻ nhất còn hàng" autocomplete="off" /></label>
+    <div class="field">Sản phẩm để tạo đơn (cửa hàng mặc định) <ui-dropdown-tree id="revenue-order-product" noun="sản phẩm" empty-label="Tự chọn (sản phẩm rẻ nhất còn hàng)"></ui-dropdown-tree></div>
   </div>
   <p class="hint">Đơn tạo thật ở cửa hàng mặc định của tài khoản (có thể tự xuất hoá đơn điện tử). Bỏ tick nếu chỉ muốn xem, không tạo dữ liệu.</p>
   <button data-run="revenue"><i data-lucide="play"></i> Chạy kiểm tra doanh thu</button>

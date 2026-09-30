@@ -91,7 +91,7 @@ function appendLog(text) {
   }
   if (atBottom) logEl.scrollTop = logEl.scrollHeight;
 }
-
+ 
 // ---------- chạy lệnh ----------
 async function run(action) {
   const body = { action, env: env(), headed: $('#headed').checked, slowMo: Number($('#slowmo').value) };
@@ -162,7 +162,7 @@ function buildMenu() {
     const btn = document.createElement('button');
     btn.className = 'menu-item';
     btn.dataset.group = g.dataset.group;
-    btn.innerHTML = `<i data-lucide="${g.dataset.icon || 'folder'}"></i><span class="label"></span><span class="num"></span>`;
+    btn.innerHTML = `<i data-lucide="${g.dataset.icon || 'folder'}"></i><span class="label"></span>`;
     btn.querySelector('.label').textContent = g.dataset.label || g.dataset.group;
     btn.title = btn.querySelector('.label').textContent;
     btn.addEventListener('click', () => { searchInput.value = ''; applySearch(); showGroup(g.dataset.group); });
@@ -194,7 +194,6 @@ function applySearch() {
       if (hit) hits++;
     }
     const item = menuList.querySelector(`[data-group="${g.dataset.group}"]`);
-    item.querySelector('.num').textContent = hits;
     item.hidden = !!q && hits === 0;
     if (q) g.hidden = hits === 0;
     anyMatch ||= hits > 0;
@@ -316,5 +315,19 @@ loadResults();
 runButtons.forEach((b) => b.addEventListener('click', () => run(b.dataset.run)));
 $('#stop').addEventListener('click', () => fetch('/stop', { method: 'POST' }));
 $('#clear').addEventListener('click', () => { logEl.textContent = ''; });
+$('#seller-sync').addEventListener('click', async () => {
+  const btn = $('#seller-sync');
+  btn.disabled = true;
+  btn.classList.add('syncing');
+  try {
+    const { syncSeller } = await import('/component/shared/seller-sync.js');
+    const { total, errors } = await syncSeller(env());
+    if (errors.length) ui.toast(`Đồng bộ lỗi — ${errors.join('; ')}`, 'error');
+    else ui.toast(`Đã đồng bộ ${total} nguồn dữ liệu từ Seller (${env()})`, 'success');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('syncing');
+  }
+});
 $('#ui').addEventListener('click', () => fetch('/ui', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ env: env() }) }));
 fetch('/status').then((r) => r.json()).then((s) => { if (s.running) { setRunning(true); setStatus('Đang chạy (lệnh cũ)…', 'running'); } });
