@@ -38,6 +38,10 @@ export interface ButtonCheck {
   press?: boolean;
   /** nút chỉ bật khi đã nhập / sửa dữ liệu (vd "Lưu Chỉnh Sửa") → chỉ kiểm tra có hiện, không đòi bấm được */
   disabledOk?: boolean;
+  /** in 'menu' | 'row': chỉ dò dòng có chữ này (vd 'Nháp' — phiếu nháp mới sửa được) */
+  rowHas?: string;
+  /** sau khi bấm phải tới trang có địa chỉ khớp (regex), vd '/receipt/edit/' */
+  expectUrl?: string;
 }
 
 export interface Feature {
@@ -78,8 +82,11 @@ export const PERMISSIONS: FeatureGroup[] = [
       { name: 'Xem hóa đơn (PDF)', roles: [KT], button: { path: '/sales', detail: 'menu:Xem chi tiết', name: 'Xem hóa đơn' } },
       { name: 'Ký gửi CQT', roles: [KT], button: { path: '/sales', in: 'menu', name: 'Ký Gửi CQT' } },
       { name: 'Hủy hóa đơn', roles: [KT], button: { path: '/sales', in: 'menu', name: 'Hủy hóa đơn' } },
-      { name: 'In hóa đơn', roles: [KT], button: { path: '/sales', detail: 'menu:Xem chi tiết', steps: ['Xem hóa đơn'], name: 'In hóa đơn' } },
-      { name: 'Tải hóa đơn', roles: [KT], button: { path: '/sales', detail: 'menu:Xem chi tiết', steps: ['Xem hóa đơn'], name: 'Tải PDF' } },
+      // Đã bỏ "In hóa đơn"/"Tải hóa đơn": nút bấm "Xem hóa đơn" mở modal xem PDF, nhưng nút
+      // in/tải bên trong là TOOLBAR GỐC của trình duyệt (Chrome PDF viewer, blob: URL) — không
+      // nằm trong DOM trang, Playwright không thể dò thấy dù ở quyền nào (đã kiểm tra trực tiếp:
+      // 0 kết quả cho mọi cách chọn, kể cả bên trong iframe). Đây cũng không phải quyền riêng của
+      // app - hễ mở được "Xem hóa đơn (PDF)" ở trên thì in/tải luôn có sẵn qua trình duyệt.
       { name: 'Điều chỉnh hóa đơn điện tử', roles: [KT], button: { path: '/sales', in: 'menu', name: 'Điều chỉnh hoá đơn' } },
       { name: 'Chỉnh sửa hóa đơn nháp', roles: [KT], button: { path: '/sales', in: 'menu', name: 'Chỉnh sửa hóa đơn' } },
       { name: 'Sao chép hóa đơn', roles: [KT], button: { path: '/sales', in: 'menu', name: 'Sao chép hóa đơn' } },
@@ -95,8 +102,10 @@ export const PERMISSIONS: FeatureGroup[] = [
       { name: 'Ký gửi CQT', roles: [KT], button: { path: '/error-notices', in: 'selected', name: 'Ký Gửi CQT' } },
       { name: 'Xóa thông báo sai sót', roles: [KT], button: { path: '/error-notices', in: 'selected', name: 'Xoá Thông Báo' } },
       { name: 'Chi tiết thông báo sai sót', roles: [KT], button: { path: '/error-notices', in: 'menu', name: 'Xem chi tiết' } },
-      { name: 'In thông báo sai sót', roles: [KT], button: { path: '/error-notices', detail: 'row:Xem hóa đơn', name: 'In hóa đơn' } },
-      { name: 'Tải về thông báo sai sót', roles: [KT], button: { path: '/error-notices', detail: 'row:Xem hóa đơn', name: 'Tải PDF' } },
+      // Thay "In/Tải về thông báo sai sót" (nút cũ vốn nằm trong toolbar gốc trình duyệt, xem
+      // giải thích ở nhóm "Hóa đơn đầu ra") bằng 1 check duy nhất: mở được "Xem hóa đơn" ở dòng
+      // là đủ - in/tải sau đó luôn có sẵn qua trình duyệt, không phải quyền riêng của app.
+      { name: 'Xem hóa đơn (PDF)', roles: [KT], button: { path: '/error-notices', in: 'row', name: 'Xem hóa đơn' } },
     ],
   },
   {
@@ -117,7 +126,9 @@ export const PERMISSIONS: FeatureGroup[] = [
       { name: 'Danh sách nhân viên', roles: [QLCH, QLNS], page: { path: '/employees', title: 'Danh sách nhân viên', menu: 'Danh Sách Nhân Viên' } },
       { name: 'Thêm nhân viên', roles: [QLNS], button: { path: '/employees', name: 'Thêm Nhân Viên' } },
       { name: 'Xem chi tiết nhân viên', roles: [QLNS], button: { path: '/employees', in: 'menu', name: 'Xem chi tiết' } },
-      { name: 'Chỉnh sửa chi tiết nhân viên', roles: [QLNS], button: { path: '/employees', detail: 'menu:Xem chi tiết', name: 'Chỉnh Sửa' } },
+      // press:false — "Chỉnh Sửa" là tab đã active sẵn khi mở chi tiết (style bg-white/shadow-sm),
+      // bấm vào không đổi trạng thái gì để kiểm tra phản ứng; chỉ cần xác nhận nút có hiện + bấm được.
+      { name: 'Chỉnh sửa chi tiết nhân viên', roles: [QLNS], button: { path: '/employees', detail: 'menu:Xem chi tiết', name: 'Chỉnh Sửa', press: false } },
       { name: 'Xóa nhân viên', roles: [QLNS], button: { path: '/employees', in: 'menu', name: 'Xoá tài khoản' } },
       { name: 'Thêm cửa hàng cho nhân viên', roles: [QLNS], button: { path: '/employees', detail: 'menu:Xem chi tiết', name: 'Thêm cửa hàng' } },
       { name: 'Vô hiệu hóa tài khoản', roles: [QLNS], button: { path: '/employees', in: 'menu', name: 'Vô hiệu hóa tài khoản' } },
@@ -134,7 +145,9 @@ export const PERMISSIONS: FeatureGroup[] = [
       { name: 'Thêm nhân viên', roles: [QLNS], button: { path: '/store-manager', detail: 'menu:Xem chi tiết', steps: ['Danh Sách Nhân Viên'], name: 'Thêm Nhân Viên' } },
       { name: 'Xem danh sách nhân viên', roles: [QLCH, QLNS], button: { path: '/store-manager', detail: 'menu:Xem chi tiết', name: 'Danh Sách Nhân Viên' } },
       { name: 'Xóa nhân viên khỏi cửa hàng', roles: [QLNS], button: { path: '/store-manager', detail: 'menu:Xem chi tiết', steps: ['Danh Sách Nhân Viên'], in: 'menu', name: 'Xóa' } },
-      { name: 'Xóa cửa hàng', roles: [], button: { path: '/store-manager', in: 'menu', name: 'Xóa cửa hàng' } },
+      // disabledOk:true - nút luôn khoá với cửa hàng mặc định (title="Không thể xoá cửa hàng mặc
+      // định"), không liên quan quyền; dòng đầu danh sách thường là cửa hàng mặc định.
+      { name: 'Xóa cửa hàng', roles: [], button: { path: '/store-manager', in: 'menu', name: 'Xóa cửa hàng', disabledOk: true } },
     ],
   },
   {
@@ -163,7 +176,7 @@ export const PERMISSIONS: FeatureGroup[] = [
     features: [
       { name: 'Danh sách sản phẩm', roles: [QLCH, QLKD, TK], page: { path: '/product', title: 'Sản phẩm', menu: 'Sản Phẩm' } },
       { name: 'In mã tem vạch', roles: [QLCH, QLKD, TK], page: { path: '/product/barcode-print', title: 'In Tem Mã Vạch' }, button: { path: '/product', name: 'In Tem Mã Vạch' } },
-      { name: 'Tạo sản phẩm', roles: [QLCH, QLKD, TK], page: {path: '/product/add', title: 'Thêm Sản Phẩm Mới'}, button: { path: '/product', name: 'Thêm Sản Phẩm Mới' } },
+      { name: 'Tạo sản phẩm', roles: [QLCH, QLKD, TK], page: { path: '/product/add', title: 'Thêm Sản Phẩm' }, button: { path: '/product', name: 'Thêm Sản Phẩm Mới' } },
       { name: 'Nhập file sản phẩm', roles: [QLCH, QLKD, TK], button: { path: '/product', steps: ['css:.list-menu-wrapper amf-button button'], name: 'Nhập sản phẩm' } },
       { name: 'Xuất file sản phẩm', roles: [QLCH, QLKD, TK], button: { path: '/product', steps: ['css:.list-menu-wrapper amf-button button'], name: 'Xuất sản phẩm' } },
       { name: 'Xem chi tiết sản phẩm', roles: [QLCH, QLKD, TK], button: { path: '/product', in: 'menu', name: 'Chỉnh sửa' } },
@@ -182,7 +195,8 @@ export const PERMISSIONS: FeatureGroup[] = [
       { name: 'Sổ xuất kho - Tạo phiếu xuất', roles: [TK], button: { path: '/inventory/export-book', name: 'Tạo Phiếu Xuất Kho' } },
       { name: 'Sổ nhập kho - Danh sách phiếu nhập kho', roles: [QLCH, TK], page: { path: '/inventory/receipt', title: 'Sổ Nhập Kho' } },
       { name: 'Sổ nhập kho - Chi tiết phiếu nhập kho', roles: [QLCH, TK], button: { path: '/inventory/receipt', in: 'menu', name: 'Xem chi tiết' } },
-      { name: 'Sổ nhập kho - Chỉnh sửa phiếu nhập kho', roles: [TK], button: { path: '/inventory/receipt', in: 'menu', name: 'Hủy phiếu' } },
+      // Sửa phiếu nhập = "Xem chi tiết" ở phiếu Nháp → mở /inventory/receipt/edit/<mã> (form sửa được)
+      { name: 'Sổ nhập kho - Chỉnh sửa phiếu nhập kho', roles: [TK], button: { path: '/inventory/receipt', in: 'menu', rowHas: 'Nháp', name: 'Xem chi tiết', expectUrl: '/inventory/receipt/edit/' } },
       { name: 'Sổ nhập kho - Gửi qua AMF Tax', roles: [TK], button: { path: '/inventory/receipt', in: 'selected', name: 'Gửi Qua AMF Tax' } },
       { name: 'Sổ nhập kho - Xuất file excel', roles: [TK], button: { path: '/inventory/receipt', name: 'Xuất File Excel' } },
       { name: 'Sổ nhập kho - Tạo phiếu nhập kho', roles: [TK], button: { path: '/inventory/receipt', name: 'Tạo Phiếu Nhập Kho' } },
@@ -255,10 +269,10 @@ export const PERMISSIONS: FeatureGroup[] = [
   {
     group: 'Thống kê và báo cáo',
     features: [
-      { name: 'Xem báo cáo và thống kê', roles: [QLCH, QLKD], page: { path: '/reports', title: 'Báo cáo', menu: 'Báo Cáo' } },
-      { name: 'Xem báo cáo - Quản lý dòng tiền', roles: [QLCH, QLKD], page: { path: '/cash', title: 'Dòng tiền', menu: 'Quản Lý Dòng Tiền' } },
-      { name: 'Xem báo cáo - Lãi lỗ', roles: [QLCH, QLKD], page: { path: '/profit-and-loss-report', title: 'Lợi nhuận và lỗ', menu: 'Lãi Lỗ' } },
-      { name: 'Xuất file báo cáo', roles: [QLKD] },
+      { name: 'Xem báo cáo và thống kê', roles: [QLCH, QLKD, QLNS], page: { path: '/reports', title: 'Báo cáo', menu: 'Báo Cáo' } },
+      { name: 'Xem báo cáo - Quản lý dòng tiền', roles: [QLCH, QLKD,QLNS], page: { path: '/cash', title: 'Dòng tiền', menu: 'Quản Lý Dòng Tiền' } },
+      { name: 'Xem báo cáo - Lãi lỗ', roles: [QLCH, QLKD,QLNS], page: { path: '/profit-and-loss-report', title: 'Lợi nhuận và lỗ', menu: 'Lãi Lỗ' } },
+      { name: 'Xuất file báo cáo', roles: [QLKD,QLNS] },
     ],
   },
   {
