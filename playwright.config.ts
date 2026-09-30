@@ -29,6 +29,16 @@ if (!process.env.RUN_STAMP) {
   process.env.RUN_STAMP = `${p(d.getDate())}${p(d.getMonth() + 1)}${String(d.getFullYear()).slice(2)}-${p(d.getHours())}${p(d.getMinutes())}`;
 }
 
+/**
+ * Chạy có hiện trình duyệt (trang điều khiển đặt PW_HEADED=1): mở Chrome toàn màn hình, trang co giãn theo cửa sổ
+ * (viewport: null) để phóng to / kéo cửa sổ là trang giãn theo. Chạy ẩn giữ cố định 1600×900 cho kết quả ổn định.
+ */
+const HEADED = process.env.PW_HEADED === '1';
+const DESKTOP = HEADED
+  ? { ...devices['Desktop Chrome'], viewport: null, deviceScaleFactor: undefined, isMobile: undefined, hasTouch: undefined }
+  : { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 } };
+const LAUNCH_ARGS = HEADED ? ['--start-maximized'] : [];
+
 /** File lưu phiên đăng nhập theo từng môi trường — đăng nhập 1 lần, các test sau dùng lại. */
 export const STORAGE_STATE = path.resolve(__dirname, `.auth/${ENV}.json`);
 
@@ -53,33 +63,33 @@ export default defineConfig({
     baseURL,
     locale: 'vi-VN',
     timezoneId: 'Asia/Ho_Chi_Minh',
-    viewport: { width: 1600, height: 900 },
+    viewport: DESKTOP.viewport,
     // Chụp màn hình cuối mỗi test (cả thành công lẫn lỗi); video + trace chỉ giữ khi lỗi
     screenshot: 'on',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',
     // SLOW_MO=300 → mỗi thao tác chậm 300ms, dễ theo dõi khi chạy --headed
-    launchOptions: { slowMo: Number(process.env.SLOW_MO ?? 0) },
+    launchOptions: { slowMo: Number(process.env.SLOW_MO ?? 0), args: LAUNCH_ARGS },
   },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 }, storageState: STORAGE_STATE },
+      use: { ...DESKTOP, storageState: STORAGE_STATE },
       dependencies: ['setup'],
       testIgnore: [/auth\.setup\.ts/, /tests[\\/]data[\\/]/, /tests[\\/]flows[\\/]/, /tests[\\/]roles[\\/]/, /tests[\\/]reports[\\/]/, /tests[\\/]features[\\/]/, /tests[\\/]_tmp[\\/]/],
     },
     {
       // Test theo từng tab (Danh mục, …) — CÓ tạo / sửa dữ liệu thật, chỉ chạy khi gọi đích danh --project=features
       name: 'features',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 }, storageState: STORAGE_STATE },
+      use: { ...DESKTOP, storageState: STORAGE_STATE },
       dependencies: ['setup'],
       testMatch: /tests[\\/]features[\\/].*\.spec\.ts/,
     },
     {
       // Kiểm tra số liệu báo cáo (doanh thu, ...) — chỉ xem, dùng phiên đăng nhập chung
       name: 'reports',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 }, storageState: STORAGE_STATE },
+      use: { ...DESKTOP, storageState: STORAGE_STATE },
       dependencies: ['setup'],
       testMatch: /tests[\\/]reports[\\/].*\.spec\.ts/,
     },
@@ -87,12 +97,11 @@ export default defineConfig({
       // Test theo vai trò — mỗi vai trò tự đăng nhập bằng tài khoản riêng (ROLE_*_USERNAME trong env)
       name: 'roles',
       use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1600, height: 900 },
+        ...DESKTOP,
         // 7 vai trò chạy song song → xếp lệch cửa sổ theo worker để khi --headed không chồng khít lên nhau
         launchOptions: {
           slowMo: Number(process.env.SLOW_MO ?? 0),
-          args: [`--window-position=${Number(process.env.TEST_PARALLEL_INDEX ?? 0) * 60},${Number(process.env.TEST_PARALLEL_INDEX ?? 0) * 40}`],
+          args: [...LAUNCH_ARGS, `--window-position=${Number(process.env.TEST_PARALLEL_INDEX ?? 0) * 60},${Number(process.env.TEST_PARALLEL_INDEX ?? 0) * 40}`],
         },
       },
       testMatch: /tests[\\/]roles[\\/].*\.spec\.ts/,
@@ -100,13 +109,13 @@ export default defineConfig({
     {
       // Luồng có tác dụng phụ (vd khoá tài khoản) — chỉ chạy khi gọi đích danh --project=flows
       name: 'flows',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 } },
+      use: { ...DESKTOP },
       testMatch: /tests[\\/]flows[\\/].*\.spec\.ts/,
     },
     {
       // Tạo dữ liệu (cửa hàng, ...) — chỉ chạy khi gọi đích danh --project=data
       name: 'data',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 900 }, storageState: STORAGE_STATE },
+      use: { ...DESKTOP, storageState: STORAGE_STATE },
       dependencies: ['setup'],
       testMatch: /tests[\\/]data[\\/].*\.spec\.ts/,
     },

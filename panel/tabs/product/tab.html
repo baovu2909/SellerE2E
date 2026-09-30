@@ -13,7 +13,7 @@
       <label class="field">Mã SKU <input id="p-sku" type="text" maxlength="50" placeholder="Không nhập" autocomplete="off" /></label>
     </div>
     <div class="row">
-      <label class="field">Danh mục cấp 3 <input id="p-category" type="text" maxlength="100" placeholder="Danh mục đầu tiên" autocomplete="off" /></label>
+      <div class="field">Danh mục cấp 3 <ui-dropdown-categories id="p-category" level="3" empty-label="Tự chọn (danh mục cấp 3 đầu tiên)"></ui-dropdown-categories></div>
       <div class="field">Loại sản phẩm
         <ui-dropdown id="p-type" value="hang-hoa">
           <option value="hang-hoa">Hàng hoá</option>

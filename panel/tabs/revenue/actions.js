@@ -17,6 +17,7 @@ module.exports = {
         ...(to ? { REVENUE_TO: to } : {}),
         REVENUE_CREATE_ORDER: p.revenueCreateOrder === false ? '0' : '1',
         ...(product ? { REVENUE_ORDER_PRODUCT: product } : {}),
+        ...(Number(p.revenueOrderProductId) ? { REVENUE_ORDER_PRODUCT_ID: String(Number(p.revenueOrderProductId)) } : {}),
       };
     },
   },

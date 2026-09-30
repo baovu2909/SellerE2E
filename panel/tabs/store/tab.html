@@ -20,8 +20,8 @@
       <label class="field">Địa chỉ <input id="s-address" type="text" maxlength="255" placeholder="VD: 123 Đường Test" autocomplete="off" /></label>
     </div>
     <div class="row">
-      <label class="field">Tỉnh / Thành phố <input id="s-province" type="text" maxlength="100" placeholder="VD: Thành phố Hà Nội" autocomplete="off" /></label>
-      <label class="field">Phường / Xã <input id="s-ward" type="text" maxlength="100" placeholder="Phường đầu tiên" autocomplete="off" /></label>
+      <div class="field">Tỉnh / Thành phố <ui-dropdown-tree id="s-province" noun="tỉnh / thành phố"></ui-dropdown-tree></div>
+      <div class="field">Phường / Xã <ui-dropdown-tree id="s-ward" noun="phường / xã" empty-label="Tự chọn (phường / xã đầu tiên)"></ui-dropdown-tree></div>
     </div>
   </div>
 

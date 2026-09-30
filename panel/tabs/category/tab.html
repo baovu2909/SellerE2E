@@ -6,15 +6,12 @@
   <div class="form-section create">
     <div class="section-title"><i data-lucide="circle-plus"></i> Tạo mới</div>
     <div class="row">
-      <label class="field">Danh mục cấp 1 <input id="category-lv1" type="text" maxlength="100" placeholder="VD: Thiết bị điện tử" autocomplete="off" /></label>
+      <div class="field">Danh mục cấp 1 › cấp 2 <ui-dropdown-categories id="category-parent" level="2" placeholder="Chọn danh mục cấp 2"></ui-dropdown-categories></div>
     </div>
     <div class="row">
-      <label class="field">Danh mục cấp 2 <input id="category-lv2" type="text" maxlength="100" placeholder="VD: Bộ phận máy tính" autocomplete="off" /></label>
+      <label class="field">Danh mục cấp 3 (tên mới) <input id="category-name" type="text" maxlength="100" placeholder="VD: Danh mục test" autocomplete="off" /></label>
     </div>
-    <div class="row">
-      <label class="field">Danh mục cấp 3 <input id="category-name" type="text" maxlength="100" placeholder="VD: Danh mục test" autocomplete="off" /></label>
-    </div>
-    <p class="hint">Cấp 1, cấp 2 phải có sẵn. Cấp 3 nhập tay mà trùng → báo lỗi; để trống thì tự tránh trùng (Danh mục test 2, 3…).</p>
+    <p class="hint">Cấp 1, cấp 2 chọn từ danh sách trên hệ thống. Cấp 3 trùng tên có sẵn trong cấp 2 → báo lỗi ngay; để trống thì tự tránh trùng (Danh mục test 2, 3…).</p>
   </div>
 
   <div class="form-section edit">

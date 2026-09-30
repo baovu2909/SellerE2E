@@ -9,6 +9,41 @@ const ROOT = path.resolve(__dirname, '..');
 const PW_CLI = path.join(ROOT, 'node_modules', '@playwright', 'test', 'cli.js');
 
 const { int } = require('./lib/helpers');
+const { sellerGet } = require('./lib/seller-api');
+const SELLER = require('./lib/seller-endpoints');
+
+// Dữ liệu lấy từ API Seller cho các ô chọn trên trang điều khiển (endpoint: lib/seller-endpoints.js)
+const slimTree = (list) => (list ?? []).map((c) => ({ id: c.id, name: String(c.name ?? '').trim(), children: slimTree(c.children) }));
+const SELLER_ROUTES = {
+  '/seller/categories': async (envName, q, acc) => ({ tree: slimTree((await sellerGet(envName, SELLER.CATEGORY_TREE, acc))?.data) }),
+  '/seller/provinces': async (envName, q, acc) => ({
+    list: ((await sellerGet(envName, SELLER.PROVINCES, acc))?.data ?? []).map((p) => ({ id: p.id, name: String(p.provinceName ?? '').trim() })),
+  }),
+  '/seller/wards': async (envName, q, acc) => {
+    const id = Number(q.get('provinceId'));
+    if (!Number.isInteger(id) || id <= 0) throw new Error('Thiếu tỉnh / thành phố');
+    return { list: ((await sellerGet(envName, SELLER.WARDS(id), acc))?.data ?? []).map((w) => ({ id: w.id, name: String(w.wardName ?? '').trim() })) };
+  },
+  '/seller/stores': async (envName, q, acc) => ({
+    list: ((await sellerGet(envName, SELLER.STORES, acc, {}))?.data ?? []).map((s) => ({ id: s.id, name: String(s.storeName ?? '').trim(), isDefault: !!s.isDefault })),
+  }),
+  // sản phẩm bán được ở cửa hàng (giống màn hình Bán tại quầy); không có storeId → cửa hàng mặc định
+  '/seller/products': async (envName, q, acc) => {
+    let storeId = Number(q.get('storeId'));
+    if (!storeId) storeId = ((await sellerGet(envName, SELLER.STORES, acc, {}))?.data ?? []).find((s) => s.isDefault)?.id;
+    if (!storeId) throw new Error('Tài khoản chưa có cửa hàng mặc định');
+    const body = { page: 1, pageSize: 1000, columnSort: 'CreatedAt', asc: false, searchParams: { categoryIds: [], isActive: 1, storeId } };
+    const list = (await sellerGet(envName, SELLER.POS_PRODUCTS, acc, body))?.data ?? [];
+    return {
+      list: list.map((p) => ({
+        id: p.productId,
+        name: String(p.productName ?? '').trim(),
+        price: Number(p.price ?? 0),
+        stock: p.isDependOnStock ? Number(p.inStock ?? 0) : null,
+      })),
+    };
+  },
+};
 
 /**
  * Lệnh chạy của từng tab: panel/tabs/<tab>/actions.js ({ [tên lệnh]: { args(body), env?(body) } }).
@@ -106,6 +141,7 @@ function runAction(req, res, body) {
     if (body.headed) args.push('--headed');
     extraEnv = action.env ? action.env(body) : {};
     if (body.headed && body.slowMo) extraEnv.SLOW_MO = String(int(body.slowMo, 0, 5000, 'Tốc độ'));
+    if (body.headed) extraEnv.PW_HEADED = '1';
     const account = activeAccount(envName);
     if (account) Object.assign(extraEnv, { SELLER_USERNAME: account.username, SELLER_PASSWORD: account.password });
   } catch (e) {
@@ -312,6 +348,14 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, updateAccounts(await readBody(req)));
     } catch (e) {
       return sendJson(res, 400, { error: e.message });
+    }
+  }
+  if (req.method === 'GET' && SELLER_ROUTES[pathname]) {
+    const envName = envOf(searchParams.get('env'));
+    try {
+      return sendJson(res, 200, await SELLER_ROUTES[pathname](envName, searchParams, activeAccount(envName)));
+    } catch (e) {
+      return sendJson(res, 502, { error: e.message });
     }
   }
   if (req.method === 'POST' && req.url === '/ui') {

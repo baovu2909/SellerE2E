@@ -1,5 +1,6 @@
 import { Locator, Page, Response, TestInfo } from '@playwright/test';
 import { expect, test as base } from '../shared-page';
+import { findOnPos, openPos, pickProduct, sell } from '../pos';
 
 /**
  * Kiểm tra số liệu trên trang Báo cáo doanh thu (/reports/revenue), thao tác trên giao diện như người dùng,
@@ -18,6 +19,7 @@ const ENV_FROM = process.env.REVENUE_FROM || '';
 const ENV_TO = process.env.REVENUE_TO || '';
 const CREATE_ORDER = process.env.REVENUE_CREATE_ORDER !== '0';
 const ORDER_PRODUCT = (process.env.REVENUE_ORDER_PRODUCT || '').trim();
+const ORDER_PRODUCT_ID = Number(process.env.REVENUE_ORDER_PRODUCT_ID) || undefined;
 
 const SUMMARY = 'reports/revenue/overview/summary';
 const CHART = 'reports/revenue/overview/chart';
@@ -576,79 +578,6 @@ async function pickCategory(scope: Locator, name: string) {
   await tree.getByText(name, { exact: true }).last().click();
 }
 
-// ---------- bán tại quầy ----------
-
-interface PosProduct { productId: number; productName: string; price: number; inStock: number; isDependOnStock: boolean; categoryNameLevel1?: string; categoryNameLevel2?: string; categoryNameLevel3?: string }
-
-async function openPos(page: Page): Promise<{ storeName: string; products: PosProduct[] }> {
-  let products: PosProduct[] | null = null;
-  const onRes = async (r: Response) => {
-    if (!r.url().includes('/products/search-product')) return;
-    const j = await r.json().catch(() => null);
-    if (Array.isArray(j?.data)) products = j.data;
-  };
-  page.on('response', onRes);
-  try {
-    await page.goto('/sale-on-place');
-    await expect(page, 'Không vào được màn hình bán tại quầy').not.toHaveURL(/\/errors\/|\/auth\//);
-    const dialog = page.getByText('Chọn Cửa Hàng', { exact: true });
-    await dialog.waitFor({ timeout: 10_000 }).catch(() => {});
-    let storeName = '';
-    if (await dialog.isVisible()) {
-      const def = page.getByText('Mặc định', { exact: true });
-      expect(await def.count(), 'Chưa có cửa hàng mặc định để bán tại quầy').toBeGreaterThan(0);
-      storeName = ((await def.first().locator('..').innerText()) ?? '').replace('Mặc định', '').trim();
-      await def.first().click();
-    }
-    await expect.poll(() => products !== null, { message: 'Không tải được danh sách sản phẩm bán tại quầy', timeout: 20_000 }).toBe(true);
-    return { storeName, products: products! };
-  } finally {
-    page.off('response', onRes);
-  }
-}
-
-function chooseProduct(products: PosProduct[]): PosProduct | undefined {
-  if (ORDER_PRODUCT) return products.find((p) => norm(p.productName) === norm(ORDER_PRODUCT));
-  const count = new Map<string, number>();
-  for (const p of products) count.set(norm(p.productName), (count.get(norm(p.productName)) ?? 0) + 1);
-  return products
-    .filter((p) => Number(p.price) > 0 && !(p.isDependOnStock && Number(p.inStock) <= 0) && count.get(norm(p.productName)) === 1)
-    .sort((a, b) => Number(a.price) - Number(b.price))[0];
-}
-
-async function sellOne(page: Page, report: Report, product: PosProduct) {
-  const cartCount = page.getByText(/Sản phẩm \(\s*\d+\s*\)/).first();
-  await expect(cartCount).toBeVisible();
-  expect(norm((await cartCount.textContent()) ?? ''), 'Giỏ hàng bán tại quầy đang có sẵn sản phẩm khác — xoá giỏ rồi chạy lại').toContain('(0)');
-
-  const card = page.getByRole('heading', { name: product.productName, exact: true }).first();
-  if (!(await card.isVisible())) {
-    const search = page.getByPlaceholder('Quét mã vạch hoặc tìm theo tên / mã / SKU');
-    await search.fill(product.productName);
-    await expect(card, `Không tìm thấy sản phẩm "${product.productName}" ở màn hình bán tại quầy`).toBeVisible();
-  }
-  await card.click();
-  await expect(cartCount, 'Bấm sản phẩm nhưng không vào giỏ').toHaveText(/\(\s*1\s*\)/);
-  await report.shot('Bán tại quầy — giỏ hàng');
-
-  await page.getByRole('button', { name: /^\s*Thanh toán\s*$/i }).last().click();
-  await page.getByRole('button', { name: 'Tiền mặt' }).click();
-  await report.shot('Bán tại quầy — xác nhận thanh toán');
-
-  const saved = page.waitForResponse((r) => r.url().includes('/orders/save-wh') && r.request().method() === 'POST', { timeout: 30_000 });
-  await page.getByRole('button', { name: /Hoàn tất thanh toán/i }).click();
-  await page.getByRole('button', { name: 'Xác Nhận', exact: true }).click();
-  const res = await saved;
-  const body = await res.json().catch(() => null);
-  expect(res.ok() && body?.isSuccess, `Tạo đơn thất bại: ${body?.message || res.status()}`).toBeTruthy();
-  await expect(cartCount, 'Thanh toán xong nhưng giỏ hàng chưa trống').toHaveText(/\(\s*0\s*\)/);
-  await report.shot('Bán tại quầy — đã thanh toán');
-  // Doanh thu KHÔNG tính VAT / giảm giá cả đơn: = Σ (SL × đơn giá − KM của dòng), đúng như BE
-  const sent: any[] = res.request().postDataJSON()?.products ?? [];
-  const revenue = sent.reduce((s, p) => s + Number(p.quantity ?? 0) * Number(p.price ?? 0) - Number(p.promotionDiscountAmount ?? 0), 0);
-  return { orderId: body.data.orderId, orderCode: String(body.data.orderCode ?? ''), paid: Number(body.data.totalAmount ?? 0), revenue };
-}
-
 interface Snapshot {
   total: number;
   orders: number;
@@ -959,7 +888,7 @@ test.describe('Doanh thu', () => {
     });
 
     const pos = await openPos(page);
-    const product = chooseProduct(pos.products);
+    const product = ORDER_PRODUCT ? await findOnPos(page, ORDER_PRODUCT, pos.products, ORDER_PRODUCT_ID) : pickProduct(pos.products);
     expect(product, ORDER_PRODUCT ? `Không thấy sản phẩm "${ORDER_PRODUCT}" ở màn hình bán tại quầy` : 'Không có sản phẩm nào còn hàng để tạo đơn').toBeTruthy();
     const category = [product!.categoryNameLevel3, product!.categoryNameLevel2, product!.categoryNameLevel1].find((c) => c?.trim())?.trim() ?? '';
     report.note(`Cửa hàng: ${pos.storeName || '(đã chọn sẵn)'}`);
@@ -970,7 +899,7 @@ test.describe('Doanh thu', () => {
     report.note(`Trước: Tổng doanh thu ${money(before.total)}, ${before.orders} đơn, "${product!.productName}" ${money(productBefore)}`);
 
     await openPos(page);
-    const order = await sellOne(page, report, product!);
+    const order = await sell(page, [{ product: product!, qty: 1 }], (name, target) => report.shot(name, target));
     const A = order.revenue;
     report.note(`✔ Đã tạo đơn ${order.orderCode} (id ${order.orderId}) — khách trả ${money(order.paid)}, trả tiền mặt`);
     report.note(`   Doanh thu phải tăng ${money(A)} (không tính VAT${order.paid !== A ? `, lệch với tiền khách trả ${money(order.paid - A)}` : ''})`);

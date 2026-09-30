@@ -1,0 +1,18 @@
+<div class="card">
+  <h2><i data-lucide="receipt"></i> Tạo → Xem đơn hàng</h2>
+  <p>Tạo đơn ở <b>Bán hàng tại quầy</b> (tiền mặt).</p>
+  <div class="form-note"><i data-lucide="info"></i><span>Ô để trống → dùng giá trị mặc định</span></div>
+
+  <div class="form-section create">
+    <div class="section-title"><i data-lucide="circle-plus"></i> Tạo đơn</div>
+    <div class="row">
+      <div class="field">Cửa hàng <ui-dropdown-tree id="o-store" noun="cửa hàng"></ui-dropdown-tree></div>
+    </div>
+    <div class="field store-field">Sản phẩm – số lượng
+      <div id="o-items" class="store-rows"></div>
+      <button type="button" class="secondary add-store" id="o-add-item"><i data-lucide="plus"></i> Thêm sản phẩm</button>
+    </div>
+    <p class="hint">Không thêm = sản phẩm rẻ nhất còn hàng, số lượng 1. Sản phẩm hết hàng không chọn được.</p>
+  </div>
+  <button data-run="order"><i data-lucide="play"></i> Chạy test đơn hàng</button>
+</div>

@@ -34,6 +34,12 @@ export default {
   init(ctx) {
     const { $, el, icon } = ctx;
 
+    customElements.whenDefined('ui-dropdown-categories').then(() => {
+      const category = $('#p-category');
+      category.env = ctx.env();
+      ctx.onEnvChange((e) => (category.env = e));
+    });
+
     function addStoreRow(name = '', qty = '') {
       const del = el('button', { type: 'button', className: 'del-store', title: 'Bỏ cửa hàng này' }, [icon('x')]);
       const row = el('div', { className: 'store-row' }, [
