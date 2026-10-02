@@ -22,6 +22,8 @@
     "roles:test": "cross-env ENV=test playwright test --project=roles --workers=7",
     "revenue:dev": "cross-env ENV=dev playwright test --project=reports tests/reports/revenue-sync.spec.ts",
     "revenue:test": "cross-env ENV=test playwright test --project=reports tests/reports/revenue-sync.spec.ts",
+    "inventory:dev": "cross-env ENV=dev playwright test --project=reports tests/reports/inventory-report.spec.ts",
+    "inventory:test": "cross-env ENV=test playwright test --project=reports tests/reports/inventory-report.spec.ts",
     "category:dev": "cross-env ENV=dev playwright test --project=features tests/features/category.spec.ts",
     "category:test": "cross-env ENV=test playwright test --project=features tests/features/category.spec.ts",
     "category-tax:dev": "cross-env ENV=dev playwright test --project=features tests/features/category-tax.spec.ts",

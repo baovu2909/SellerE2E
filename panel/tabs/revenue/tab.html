@@ -1,14 +1,25 @@
 <div class="card">
   <h2><i data-lucide="circle-dollar-sign"></i> Kiểm tra doanh thu</h2>
-  <p>So <b>Tổng doanh thu</b> với tổng cộng dồn theo thời gian, phương thức thanh toán, cửa hàng, sản phẩm, kênh bán, nhân viên — phải khớp nhau. Kiểm tra thêm <b>làm tròn số tiền rút gọn</b> (đ / k / tr / T), số cột tối đa của biểu đồ (Cửa hàng 15, Sản phẩm top 10) và <b>bộ lọc</b> ở từng tab.</p>
+  <p>Tổng doanh thu khớp từng tab, làm tròn số tiền, biểu đồ, bộ lọc.</p>
   <div class="row">
     <div class="field">Từ ngày – Đến ngày <ui-daterange id="revenue-range" placeholder="1 tháng gần nhất (mặc định)"></ui-daterange></div>
   </div>
-  <p class="hint">Để trống = 1 tháng gần nhất (mặc định của trang Báo cáo doanh thu). Kết quả từng phần xem ở tab Log / Thành công / Lỗi.</p>
-  <label class="check"><input type="checkbox" id="revenue-create-order" checked /> Tạo 1 đơn bán tại quầy (tiền mặt) rồi kiểm tra số liệu tăng đúng</label>
+  <label class="check"><input type="checkbox" id="revenue-create-order" checked /> Tạo 1 đơn bán tại quầy rồi kiểm tra số liệu tăng đúng</label>
   <div class="row">
-    <div class="field">Sản phẩm để tạo đơn (cửa hàng mặc định) <ui-dropdown-tree id="revenue-order-product" noun="sản phẩm" empty-label="Tự chọn (sản phẩm rẻ nhất còn hàng)"></ui-dropdown-tree></div>
+    <div class="field">Sản phẩm để tạo đơn <ui-dropdown-tree id="revenue-order-product" noun="sản phẩm" empty-label="Tự chọn (rẻ nhất còn hàng)"></ui-dropdown-tree></div>
   </div>
-  <p class="hint">Đơn tạo thật ở cửa hàng mặc định của tài khoản (có thể tự xuất hoá đơn điện tử). Bỏ tick nếu chỉ muốn xem, không tạo dữ liệu.</p>
   <button data-run="revenue"><i data-lucide="play"></i> Chạy kiểm tra doanh thu</button>
+</div>
+<div class="card">
+  <h2><i data-lucide="warehouse"></i> Kiểm tra tồn kho</h2>
+  <p>Card tổng, Top 10, bảng tồn kho theo cửa hàng, bộ lọc.</p>
+  <div class="row">
+    <div class="field">Từ ngày – Đến ngày <ui-daterange id="inventory-range" placeholder="1 tháng gần nhất (mặc định)"></ui-daterange></div>
+  </div>
+  <label class="check"><input type="checkbox" id="inventory-create-order" checked /> Tạo 1 đơn bán tại quầy → tồn kho cập nhật realtime</label>
+  <label class="check"><input type="checkbox" id="inventory-cancel-order" checked /> Huỷ đơn vừa tạo → tồn kho cộng lại</label>
+  <div class="row">
+    <div class="field">Sản phẩm để tạo đơn <ui-dropdown-tree id="inventory-order-product" noun="sản phẩm" empty-label="Tự chọn (có quản lý tồn, rẻ nhất còn hàng)"></ui-dropdown-tree></div>
+  </div>
+  <button data-run="inventory"><i data-lucide="play"></i> Chạy kiểm tra tồn kho</button>
 </div>
