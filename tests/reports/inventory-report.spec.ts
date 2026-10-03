@@ -266,7 +266,9 @@ const test = base.extend<{ api: ApiLog; report: Report }>({
 
 const cardOf = (page: Page, label: string) => page.locator('.dash-card').filter({ hasText: new RegExp(label, 'i') }).first();
 const tableCard = (page: Page) => page.locator('.dash-card').filter({ hasText: 'Tồn Kho Theo Cửa Hàng' }).filter({ has: page.locator('table') }).first();
-const topCard = (page: Page, title: string) => page.locator('.dash-card').filter({ has: page.getByRole('button', { name: new RegExp(title) }) }).first();
+const topCard = (page: Page, title: string) => page.locator('.dash-card').filter({ hasText: title }).first();
+/** Tiêu đề card Top 10 */
+const topHeader = (card: Locator, title: string) => card.getByText(title).first();
 
 /** Gõ ngày vào ô amf-daterange (ô chia phần dd/mm/yyyy) */
 async function typeDate(page: Page, index: 0 | 1, iso: string) {
@@ -420,20 +422,29 @@ const tipValue = (text: string, label: string) => {
   return m ? parseVi(m[1]) : NaN;
 };
 
+/** Tooltip "Số lượng tồn": SP không quản lý tồn ghi "Không giới hạn" (API trả 0), còn lại so số với API */
+function checkTipStock(report: Report, tip: string, it: any) {
+  const m = tip.match(/Số lượng tồn\s*:?\s*([^\d\s-][^:]*?)(?=Doanh thu|Số lượng|$)/);
+  if (m && isInfinite(m[1])) {
+    report.check(Number(it.stockQuantity) === 0, 'Tooltip — số lượng tồn: "Không giới hạn" (sản phẩm không quản lý tồn kho)', `API ${qtyText(it.stockQuantity)}`);
+    return;
+  }
+  report.same('Tooltip — số lượng tồn', tipValue(tip, 'Số lượng tồn'), Number(it.stockQuantity), 'API');
+}
+
 // ---------- top 10 ----------
 
 async function openTop(page: Page, title: string) {
   const card = topCard(page, title);
-  const header = card.getByRole('button', { name: new RegExp(title) });
-  await settle(header);
-  if (!(await card.locator('.top-chart, :text("Không có dữ liệu")').first().isVisible().catch(() => false))) await header.click();
-  await expect(card.locator('.top-chart').or(card.getByText('Không có dữ liệu')), `Bấm "${title}" không mở biểu đồ`).toBeVisible();
+  await settle(topHeader(card, title));
+  const chart = card.locator('.top-chart').or(card.getByText('Không có dữ liệu')).first();
+  await expect(chart, `Card "${title}" không hiện biểu đồ`).toBeVisible();
   return card;
 }
 
 async function checkTopChart(page: Page, report: Report, title: string, items: any[], valueOf: (it: any) => number, range: Range) {
   const card = await openTop(page, title);
-  const header = (await card.getByRole('button', { name: new RegExp(title) }).innerText()).replace(/\s+/g, ' ');
+  const header = (await topHeader(card, title).innerText()).replace(/\s+/g, ' ');
   const want = `(Từ ${dotDate(range.from)} - ${dotDate(range.to)})`;
   report.check(header.includes(want), `Tiêu đề "${title}" ghi đúng khoảng ngày ${want}`, header);
   report.check(items.length <= TOP_SIZE, `Tối đa ${TOP_SIZE} sản phẩm`, `API trả ${items.length}`);
@@ -456,6 +467,32 @@ async function checkTopChart(page: Page, report: Report, title: string, items: a
   report.check(unsorted < 0, 'Sắp xếp giảm dần', unsorted < 0 ? '' : `"${items[unsorted].productName}" (${qtyText(valueOf(items[unsorted]))}) đứng sau "${items[unsorted - 1].productName}" (${qtyText(valueOf(items[unsorted - 1]))})`);
   await report.shot(title, card);
   return card;
+}
+
+// ---------- trang chi tiết Tồn kho theo sản phẩm ----------
+
+/** Cột "Đã bán tại quầy" — trang ghi tắt "Đã Bán Tại BHTQ" (Bán hàng tại quầy) */
+const POS_COL = 'tại quầy|BHTQ';
+/** Sản phẩm không quản lý tồn kho: bảng chi tiết hiện icon ∞ (đọc thành "∞"), tooltip Top 10 ghi "Không giới hạn" */
+const isInfinite = (text: string) => /∞|vô hạn|không giới hạn/i.test(text ?? '');
+
+/** Đọc bảng trang chi tiết (đang mở): tiêu đề cột, các dòng trang đầu, tổng tồn bỏ ∞ */
+async function readDetail(page: Page, fmt: NumFmt) {
+  await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => {});
+  const loaded = page.locator('tbody tr:not(:has(td[colspan]))').first().or(page.locator('app-table-empty')).first();
+  if (!(await loaded.waitFor({ timeout: 20_000 }).then(() => true, () => false))) return null;
+  const heads = (await page.locator('thead th').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+  const iStock = heads.findIndex((h) => /^Tồn kho/i.test(h));
+  const cells = await page.locator('tbody tr').evaluateAll((trs) =>
+    trs.filter((tr) => !tr.querySelector('td[colspan]')).map((tr) => [...tr.children].map((td) =>
+      td.querySelector('.lucide-infinity, lucide-icon[name="infinity"]') ? '∞' : (td.textContent ?? '').replace(/\s+/g, ' ').trim())));
+  const finite = iStock < 0 ? cells : cells.filter((c) => !isInfinite(c[iStock]));
+  return {
+    heads, cells, iStock,
+    infinite: cells.length - finite.length,
+    stockSum: iStock < 0 ? NaN : sum(finite, (c) => parseWith(c[iStock], fmt)),
+    paged: await page.getByTitle('Trang sau').isVisible().catch(() => false),
+  };
 }
 
 // ---------- trang Quản lý kho (đối chiếu) ----------
@@ -585,7 +622,7 @@ test.describe('Tồn kho', () => {
     report.check(norm(tip).includes(norm(it.productName)), `Tooltip có tên sản phẩm "${it.productName}"`, tip);
     report.same('Tooltip — số lượng bán', tipValue(tip, 'Số lượng bán'), Number(it.soldQuantity), 'API');
     report.same('Tooltip — doanh thu', tipValue(tip, 'Doanh thu'), Number(it.revenue), 'API', 'đ');
-    report.same('Tooltip — số lượng tồn', tipValue(tip, 'Số lượng tồn'), Number(it.stockQuantity), 'API');
+    checkTipStock(report, tip, it);
     await report.shot('Top bán chạy — tooltip', 'viewport');
   });
 
@@ -612,7 +649,7 @@ test.describe('Tồn kho', () => {
     if (!tip) return report.check(false, `Hover "${it.productName}" hiện tooltip`, 'không hiện');
     report.check(norm(tip).includes(norm(it.productName)), `Tooltip có tên sản phẩm "${it.productName}"`, tip);
     report.same('Tooltip — số ngày tồn', tipValue(tip, 'ngày chậm tiêu thụ|ngày tồn'), days(it), 'API');
-    report.same('Tooltip — số lượng tồn', tipValue(tip, 'Số lượng tồn'), Number(it.stockQuantity), 'API');
+    checkTipStock(report, tip, it);
     await report.shot('Top chậm tiêu thụ — tooltip', 'viewport');
   });
 
@@ -646,15 +683,34 @@ test.describe('Tồn kho', () => {
     });
     report.check(!wrong.length, `Số trên bảng khớp dữ liệu (${items.length} cửa hàng)`, wrong.slice(0, 8).join('; '));
 
+    // SP hiện có tính cả sản phẩm không quản lý tồn (tồn ∞) → có sản phẩm mà số lượng tồn = 0 vẫn đúng
     const odd = items.filter((it) =>
       Number(it.slowMovingProductCount) > Number(it.productCount) ||
       Number(it.slowMovingStockValue) > Number(it.stockValue) + TOLERANCE ||
-      (Number(it.productCount) > 0) !== (Number(it.stockQuantity) > 0));
-    report.check(!odd.length, 'Tồn quá hạn ≤ hiện có; có sản phẩm ⇔ có số lượng tồn', odd.map((it) => it.storeName).join(', '));
+      (Number(it.stockQuantity) > 0 && Number(it.productCount) === 0));
+    report.check(!odd.length, 'Tồn quá hạn ≤ hiện có; có số lượng tồn ⇒ có sản phẩm', odd.map((it) => it.storeName).join(', '));
     const decimals = rows.find((r) => /[.,]\d+$/.test(r.productCount.replace(/\s/g, '')) && parseWith(r.productCount, fmt) % 1 === 0);
     if (decimals) report.warn('Cột SP Hiện Có / SP Tồn Quá Hạn là số sản phẩm nhưng hiện phần thập phân', `vd "${decimals.productCount}"`);
     const unsorted = items.findIndex((it, i) => i > 0 && Number(items[i - 1].stockValue) < Number(it.stockValue));
     if (unsorted > 0) report.warn('Bảng không sắp theo giá trị tồn giảm dần', `"${items[unsorted].storeName}" đứng sau "${items[unsorted - 1].storeName}"`);
+
+    // có sản phẩm mà tồn 0 → vào chi tiết: đếm sản phẩm, cộng tồn (bỏ sản phẩm tồn ∞)
+    const noStock = items.filter((it) => Number(it.productCount) > 0 && Number(it.stockQuantity) === 0).slice(0, 3);
+    for (const st of noStock) {
+      report.note('');
+      report.note(`"${st.storeName}": ${qtyText(st.productCount)} SP hiện có nhưng tồn 0 → vào chi tiết kiểm tra`);
+      await page.goto(`/reports/inventory/product?storeId=${st.storeId}`);
+      const d = await readDetail(page, fmt);
+      if (!d) {
+        report.warn(`"${st.storeName}": không đọc được bảng chi tiết`);
+        continue;
+      }
+      report.note(`   ${d.cells.map((c) => `${c[0]}: ${c[d.iStock] ?? '?'}`).join('; ')}`);
+      if (d.paged) report.note('   bảng chi tiết nhiều trang — chỉ so trang đầu');
+      else report.same(`"${st.storeName}" — số dòng chi tiết = SP hiện có`, d.cells.length, Number(st.productCount), 'bảng cửa hàng');
+      report.same(`"${st.storeName}" — cộng tồn (bỏ ∞) = số lượng tồn`, d.stockSum, Number(st.stockQuantity), 'bảng cửa hàng');
+      await report.shot(`Chi tiết "${st.storeName}"`);
+    }
   });
 
   test('5. Bảng — bộ lọc cửa hàng, trạng thái, Đặt Lại', async ({ page, api, report }) => {
@@ -729,24 +785,23 @@ test.describe('Tồn kho', () => {
     report.check(/\/reports\/inventory\/product/.test(url) && url.includes(`storeId=${store.storeId}`), 'Đường dẫn trang chi tiết có đúng cửa hàng', url);
     await expect.soft(page.getByText(/Tồn kho theo sản phẩm/i).first(), 'Không thấy tiêu đề "Tồn kho theo sản phẩm"').toBeVisible();
 
-    const heads = (await page.locator('thead th').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
-    const want = ['Tên sản phẩm|Sản phẩm', 'Danh mục', 'Tồn kho', 'Thời gian tồn', 'Đã bán', 'Xuất kho', 'tại quầy'];
+    const fmt = await readFmt(page);
+    const d = await readDetail(page, fmt);
+    const heads = d?.heads ?? [];
+    const want = ['Tên sản phẩm|Sản phẩm', 'Danh mục', 'Tồn kho', 'Thời gian tồn', 'Đã bán', 'Xuất kho', POS_COL];
     const lack = want.filter((w) => !heads.some((h) => new RegExp(w, 'i').test(h)));
     report.check(!lack.length, `Bảng chi tiết đủ cột (${heads.join(' | ')})`, lack.map((l) => `thiếu "${l}"`).join(', '));
     const col = (re: RegExp) => heads.findIndex((h) => re.test(h));
-    const iStock = col(/^Tồn kho/i);
     const iSold = col(/^Đã bán$/i);
     const iWh = col(/Xuất kho/i);
-    const iPos = col(/tại quầy/i);
-    const fmt = await readFmt(page);
-    const cells = await page.locator('tbody tr').evaluateAll((trs) =>
-      trs.filter((tr) => !tr.querySelector('td[colspan]')).map((tr) => [...tr.children].map((td) => (td.textContent ?? '').replace(/\s+/g, ' ').trim())));
-    report.note(`   ${cells.length} dòng trên trang đầu`);
-    if (iStock >= 0 && cells.length) {
-      if (await page.getByTitle('Trang sau').isVisible().catch(() => false)) report.note('   bảng chi tiết nhiều trang — chỉ so trang đầu');
+    const iPos = col(new RegExp(POS_COL, 'i'));
+    const cells = d?.cells ?? [];
+    report.note(`   ${cells.length} dòng trên trang đầu${d?.infinite ? `, ${d.infinite} sản phẩm tồn ∞ (không quản lý tồn)` : ''}`);
+    if (d && d.iStock >= 0 && cells.length) {
+      if (d.paged) report.note('   bảng chi tiết nhiều trang — chỉ so trang đầu');
       else {
         report.same('Số dòng = SP hiện có của cửa hàng', cells.length, Number(store.productCount), 'bảng cửa hàng');
-        report.same('Cộng cột Tồn kho = số lượng tồn của cửa hàng', sum(cells, (c) => parseWith(c[iStock], fmt)), Number(store.stockQuantity), 'bảng cửa hàng');
+        report.same('Cộng cột Tồn kho (bỏ ∞) = số lượng tồn của cửa hàng', d.stockSum, Number(store.stockQuantity), 'bảng cửa hàng');
       }
     }
     if (iSold >= 0 && iWh >= 0 && iPos >= 0) {
@@ -838,7 +893,7 @@ test.describe('Tồn kho', () => {
       api.wait(TABLE, { range: week, since: s2 }),
     ]);
     report.check(true, 'Card, Top 10 và bảng đều tải lại theo khoảng ngày mới');
-    const header = (await topCard(page, 'Top 10 Sản Phẩm Bán Chạy').getByRole('button').first().innerText()).replace(/\s+/g, ' ');
+    const header = (await topHeader(topCard(page, 'Top 10 Sản Phẩm Bán Chạy'), 'Top 10 Sản Phẩm Bán Chạy').innerText()).replace(/\s+/g, ' ');
     report.check(header.includes(`(Từ ${dotDate(week.from)} - ${dotDate(week.to)})`), 'Tiêu đề Top 10 đổi theo khoảng ngày mới', header);
     const d = summary?.data ?? {};
     report.same('Giá trị tồn kho không đổi theo khoảng ngày (số liệu hiện tại)', Number(d.stockValue), Number(before.stockValue), `lúc ${vnDate(def.from)} → ${vnDate(def.to)}`, 'đ');
